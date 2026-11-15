@@ -1,10 +1,11 @@
-// Vercel Function (Node.js runtime, Web handler) que conecta EAN Assistant con la API de Claude.
-// La API key se lee solo del entorno del servidor (ANTHROPIC_API_KEY) y nunca llega al navegador.
+// Vercel Function (Node.js runtime, Web handler) que conecta EAN Assistant con un modelo de IA.
+// Proveedor por defecto: Gemini (GEMINI_API_KEY). Alternativa: Claude (ANTHROPIC_API_KEY).
+// Las API keys se leen solo del entorno del servidor y nunca llegan al navegador.
 import Anthropic from '@anthropic-ai/sdk'
+import { ApiError as GeminiApiError, GoogleGenAI, ThinkingLevel } from '@google/genai'
 
 export const config = { maxDuration: 60 }
 
-const MODEL = process.env.ANTHROPIC_MODEL || 'claude-opus-5-5'
 const MAX_MESSAGES = 20
 const MAX_CHARS_PER_MESSAGE = 2000
 
@@ -25,7 +26,7 @@ interface IncomingMessage {
 const json = (body: unknown, status: number) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json; charset=utf-8' } })
 
-function parseMessages(body: unknown): Anthropic.Beta.BetaMessageParam[] | null {
+function parseMessages(body: unknown): IncomingMessage[] | null {
   if (!body || typeof body !== 'object' || !Array.isArray((body as { messages?: unknown }).messages)) return null
   const raw = (body as { messages: unknown[] }).messages.slice(-MAX_MESSAGES)
   const messages: IncomingMessage[] = []
@@ -41,12 +42,102 @@ function parseMessages(body: unknown): Anthropic.Beta.BetaMessageParam[] | null 
   return messages
 }
 
-export async function POST(request: Request): Promise<Response> {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return json({ error: 'El asistente no está configurado (falta ANTHROPIC_API_KEY en el servidor).' }, 500)
-  }
+type Provider = 'gemini' | 'anthropic'
 
-  let messages: Anthropic.Beta.BetaMessageParam[] | null
+function resolveProvider(): Provider | null {
+  const explicit = process.env.AI_PROVIDER?.toLowerCase()
+  if (explicit === 'gemini' || explicit === 'anthropic') return explicit
+  if (process.env.GEMINI_API_KEY) return 'gemini'
+  if (process.env.ANTHROPIC_API_KEY) return 'anthropic'
+  return null
+}
+
+class ChatError extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message)
+  }
+}
+
+const REFUSAL_TEXT = 'No puedo ayudarte con eso, pero si es un tema de la U te recomiendo consultar los canales oficiales de la EAN.'
+
+/* ─────────────── Gemini ─────────────── */
+
+async function* streamGemini(messages: IncomingMessage[]): AsyncGenerator<string> {
+  if (!process.env.GEMINI_API_KEY) throw new ChatError('Falta GEMINI_API_KEY en el servidor.', 500)
+  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
+  let response
+  try {
+    response = await ai.models.generateContentStream({
+      model: process.env.GEMINI_MODEL || 'gemini-3.8-flash',
+      contents: messages.map((m) => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] })),
+      config: {
+        systemInstruction: SYSTEM_PROMPT,
+        maxOutputTokens: 2048,
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+      },
+    })
+  } catch (err) {
+    if (err instanceof GeminiApiError) {
+      console.error(`Error de Gemini (${err.status}):`, err.message)
+      if (err.status === 429) throw new ChatError('Hay muchas personas usando el asistente. Intenta en un minuto.', 429)
+      if (err.status === 400 || err.status === 401 || err.status === 403) throw new ChatError('El asistente no está disponible por un problema de configuración.', 500)
+      throw new ChatError('El asistente no pudo responder. Intenta de nuevo.', 502)
+    }
+    throw err
+  }
+  let sent = false
+  for await (const chunk of response) {
+    const text = chunk.text
+    if (text) {
+      sent = true
+      yield text
+    }
+  }
+  // Gemini no devuelve texto cuando bloquea la respuesta por sus filtros de seguridad.
+  if (!sent) yield REFUSAL_TEXT
+}
+
+/* ─────────────── Claude ─────────────── */
+
+async function* streamAnthropic(messages: IncomingMessage[]): AsyncGenerator<string> {
+  if (!process.env.ANTHROPIC_API_KEY) throw new ChatError('Falta ANTHROPIC_API_KEY en el servidor.', 500)
+  const client = new Anthropic() // lee ANTHROPIC_API_KEY de process.env
+  const stream = client.beta.messages.stream({
+    model: process.env.ANTHROPIC_MODEL || 'claude-opus-5-5',
+    max_tokens: 2048,
+    system: [{ type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }],
+    output_config: { effort: 'low' },
+    // Si el modelo declina por una política de seguridad, la API reintenta con un modelo alternativo.
+    betas: ['server-side-fallback-2026-07-01'],
+    fallbacks: 'default',
+    messages,
+  })
+  try {
+    for await (const event of stream) {
+      if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') yield event.delta.text
+    }
+    const final = await stream.finalMessage()
+    if (final.stop_reason === 'refusal') yield REFUSAL_TEXT
+  } catch (err) {
+    if (err instanceof Anthropic.RateLimitError) throw new ChatError('Hay muchas personas usando el asistente. Intenta en un minuto.', 429)
+    if (err instanceof Anthropic.AuthenticationError) throw new ChatError('El asistente no está disponible por un problema de configuración.', 500)
+    if (err instanceof Anthropic.APIError) {
+      console.error(`Error de Claude (${err.status}):`, err.message)
+      throw new ChatError('El asistente no pudo responder. Intenta de nuevo.', 502)
+    }
+    throw err
+  } finally {
+    stream.abort()
+  }
+}
+
+/* ─────────────── Handler ─────────────── */
+
+export async function POST(request: Request): Promise<Response> {
+  const provider = resolveProvider()
+  if (!provider) return json({ error: 'El asistente no está configurado (falta GEMINI_API_KEY en el servidor).' }, 500)
+
+  let messages: IncomingMessage[] | null
   try {
     messages = parseMessages(await request.json())
   } catch {
@@ -54,69 +145,39 @@ export async function POST(request: Request): Promise<Response> {
   }
   if (!messages) return json({ error: 'Formato de mensajes inválido.' }, 400)
 
-  const client = new Anthropic() // lee ANTHROPIC_API_KEY de process.env
+  const generator = provider === 'gemini' ? streamGemini(messages) : streamAnthropic(messages)
 
+  // Espera el primer fragmento para poder devolver un error HTTP real si la petición falla de entrada.
+  let first: IteratorResult<string>
   try {
-    const stream = client.beta.messages.stream({
-      model: MODEL,
-      max_tokens: 2048,
-      system: [{ type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }],
-      output_config: { effort: 'low' },
-      // Si el modelo declina por una política de seguridad, la API reintenta con un modelo alternativo.
-      betas: ['server-side-fallback-2026-07-01'],
-      fallbacks: 'default',
-      messages,
-    })
-
-    // Espera el primer evento para poder devolver un error HTTP real si la petición falla de entrada.
-    const iterator = stream[Symbol.asyncIterator]()
-    const first = await iterator.next()
-    const encoder = new TextEncoder()
-
-    const body = new ReadableStream<Uint8Array>({
-      async start(controller) {
-        const push = (event: IteratorResult<Anthropic.Beta.BetaRawMessageStreamEvent>) => {
-          if (!event.done && event.value.type === 'content_block_delta' && event.value.delta.type === 'text_delta') {
-            controller.enqueue(encoder.encode(event.value.delta.text))
-          }
-        }
-        try {
-          push(first)
-          for (let next = await iterator.next(); !next.done; next = await iterator.next()) push(next)
-          const final = await stream.finalMessage()
-          if (final.stop_reason === 'refusal') {
-            controller.enqueue(
-              encoder.encode('No puedo ayudarte con eso, pero si es un tema de la U te recomiendo consultar los canales oficiales de la EAN.'),
-            )
-          }
-        } catch (err) {
-          console.error('Error durante el streaming:', err)
-          controller.enqueue(encoder.encode('\n\n[Se interrumpió la respuesta. Intenta de nuevo.]'))
-        } finally {
-          controller.close()
-        }
-      },
-      cancel() {
-        stream.abort()
-      },
-    })
-
-    return new Response(body, {
-      headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' },
-    })
+    first = await generator.next()
   } catch (err) {
-    if (err instanceof Anthropic.AuthenticationError) {
-      console.error('API key inválida')
-      return json({ error: 'El asistente no está disponible por un problema de configuración.' }, 500)
-    }
-    if (err instanceof Anthropic.RateLimitError) {
-      return json({ error: 'Hay muchas personas usando el asistente. Intenta en un minuto.' }, 429)
-    }
-    if (err instanceof Anthropic.APIError) {
-      console.error(`Error de la API (${err.status}):`, err.message)
-      return json({ error: 'El asistente no pudo responder. Intenta de nuevo.' }, 502)
-    }
+    if (err instanceof ChatError) return json({ error: err.message }, err.status)
     console.error('Error inesperado:', err)
     return json({ error: 'Error inesperado del servidor.' }, 500)
   }
+
+  const encoder = new TextEncoder()
+  const body = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      try {
+        if (!first.done) controller.enqueue(encoder.encode(first.value))
+        for (let next = await generator.next(); !next.done; next = await generator.next()) {
+          controller.enqueue(encoder.encode(next.value))
+        }
+      } catch (err) {
+        console.error('Error durante el streaming:', err)
+        controller.enqueue(encoder.encode('\n\n[Se interrumpió la respuesta. Intenta de nuevo.]'))
+      } finally {
+        controller.close()
+      }
+    },
+    cancel() {
+      void generator.return(undefined)
+    },
+  })
+
+  return new Response(body, {
+    headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' },
+  })
 }

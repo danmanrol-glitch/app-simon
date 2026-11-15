@@ -42,7 +42,7 @@ function devApi(): Plugin {
 export default defineConfig(({ mode }) => {
   // Carga .env sin prefijo solo en el proceso de Node (servidor). Nada de esto se inyecta en el bundle del cliente.
   const env = loadEnv(mode, process.cwd(), '')
-  for (const key of ['ANTHROPIC_API_KEY', 'ANTHROPIC_MODEL']) {
+  for (const key of ['AI_PROVIDER', 'GEMINI_API_KEY', 'GEMINI_MODEL', 'ANTHROPIC_API_KEY', 'ANTHROPIC_MODEL']) {
     if (env[key] && !process.env[key]) process.env[key] = env[key]
   }
 
