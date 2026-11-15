@@ -31,3 +31,28 @@ export const initials = (name: string) =>
   name.split(' ').filter(Boolean).slice(0, 2).map((p) => p[0]).join('').toUpperCase()
 
 export const cn = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(' ')
+
+const AVATAR_GRADIENTS = [
+  'from-green-500 to-emerald-700',
+  'from-sky-500 to-indigo-600',
+  'from-fuchsia-500 to-purple-600',
+  'from-amber-400 to-orange-600',
+  'from-rose-400 to-pink-600',
+  'from-teal-400 to-cyan-700',
+  'from-violet-500 to-purple-700',
+  'from-lime-500 to-green-700',
+  'from-orange-400 to-red-500',
+  'from-cyan-500 to-blue-600',
+]
+
+/** Color de avatar estable a partir del id del usuario (no requiere columna en la BD). */
+export const avatarGradient = (id: string) => {
+  let h = 0
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0
+  return AVATAR_GRADIENTS[h % AVATAR_GRADIENTS.length]
+}
+
+export const todayISO = () => {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}

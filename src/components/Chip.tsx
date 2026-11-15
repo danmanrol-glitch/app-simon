@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { cn } from '../lib'
+import { cn } from '../lib/utils'
 
 export function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (

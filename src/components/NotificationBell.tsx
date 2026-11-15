@@ -1,14 +1,15 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Bell, CalendarDays, HeartHandshake, Info, MessageCircle } from 'lucide-react'
-import { useApp } from '../context/AppContext'
+import { notifications as initialNotifications } from '../data/catalog'
 import { Sheet } from './Sheet'
-import { cn } from '../lib'
+import { cn } from '../lib/utils'
 
 const ICONS = { actividad: CalendarDays, comunidad: MessageCircle, bienestar: HeartHandshake, sistema: Info }
 
 export function NotificationBell() {
-  const { notifications, markAllRead } = useApp()
+  const [notifications, setNotifications] = useState(initialNotifications)
+  const markAllRead = () => setNotifications((n) => n.map((x) => ({ ...x, read: true })))
   const [open, setOpen] = useState(false)
   const unread = notifications.filter((n) => !n.read).length
 

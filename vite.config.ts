@@ -21,7 +21,10 @@ function devApi(): Plugin {
           for await (const chunk of req) chunks.push(chunk as Buffer)
           const request = new Request(`http://localhost${req.originalUrl ?? '/api/chat'}`, {
             method: 'POST',
-            headers: { 'Content-Type': req.headers['content-type'] ?? 'application/json' },
+            headers: {
+              'Content-Type': req.headers['content-type'] ?? 'application/json',
+              Authorization: req.headers.authorization ?? '',
+            },
             body: Buffer.concat(chunks),
           })
           const response = await mod.POST(request)
@@ -42,7 +45,7 @@ function devApi(): Plugin {
 export default defineConfig(({ mode }) => {
   // Carga .env sin prefijo solo en el proceso de Node (servidor). Nada de esto se inyecta en el bundle del cliente.
   const env = loadEnv(mode, process.cwd(), '')
-  for (const key of ['AI_PROVIDER', 'GEMINI_API_KEY', 'GEMINI_MODEL', 'ANTHROPIC_API_KEY', 'ANTHROPIC_MODEL']) {
+  for (const key of ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY', 'AI_PROVIDER', 'GEMINI_API_KEY', 'GEMINI_MODEL', 'ANTHROPIC_API_KEY', 'ANTHROPIC_MODEL']) {
     if (env[key] && !process.env[key]) process.env[key] = env[key]
   }
 

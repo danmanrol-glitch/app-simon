@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Bot, CalendarHeart, Home, User, Users } from 'lucide-react'
-import { cn } from '../lib'
+import { cn } from '../lib/utils'
 
 const TABS = [
   { to: '/', label: 'Inicio', icon: Home },

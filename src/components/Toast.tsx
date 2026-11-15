@@ -1,8 +1,8 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { useApp } from '../context/AppContext'
+import { useToast } from '../context/ToastContext'
 
 export function Toast() {
-  const { toast } = useApp()
+  const { toast } = useToast()
   return (
     <div className="pointer-events-none fixed inset-x-0 top-4 z-[60] flex justify-center px-4">
       <AnimatePresence>

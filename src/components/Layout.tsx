@@ -1,7 +1,6 @@
 import { useLocation, useOutlet } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { BottomNav } from './BottomNav'
-import { Toast } from './Toast'
 
 export function Layout() {
   const location = useLocation()
@@ -23,7 +22,6 @@ export function Layout() {
         </AnimatePresence>
         <BottomNav />
       </div>
-      <Toast />
     </div>
   )
 }

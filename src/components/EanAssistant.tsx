@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Bot, HeartHandshake, RotateCcw, SendHorizontal, Sparkles } from 'lucide-react'
-import { WELLBEING_CHANNEL } from '../mock/db'
-import { cn } from '../lib'
+import { WELLBEING_CHANNEL } from '../data/catalog'
+import { cn } from '../lib/utils'
+import { supabase } from '../lib/supabase'
 
 interface ChatMessage {
   id: string
@@ -57,9 +58,10 @@ export function EanAssistant() {
     abortRef.current = controller
 
     try {
+      const { data: auth } = await supabase.auth.getSession()
       const res = await fetch('/api/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${auth.session?.access_token ?? ''}` },
         body: JSON.stringify({
           messages: history.filter((m) => m.id !== 'welcome' && !m.error).map(({ role, content }) => ({ role, content })),
         }),

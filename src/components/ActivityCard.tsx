@@ -1,18 +1,28 @@
 import { motion } from 'framer-motion'
 import { CalendarDays, Check, Clock, MapPin } from 'lucide-react'
-import { ACTIVITY_CATEGORIES, type Activity } from '../mock/db'
-import { useApp } from '../context/AppContext'
-import { AvatarStack } from './Avatar'
-import { cn, formatShortDate, formatTime } from '../lib'
+import { ACTIVITY_CATEGORIES } from '../data/catalog'
+import type { Activity, PublicProfile } from '../types'
+import { AvatarStack, type Person } from './Avatar'
+import { cn, formatShortDate, formatTime } from '../lib/utils'
 
-export function ActivityCard({ activity, compact = false }: { activity: Activity; compact?: boolean }) {
-  const { enrolledIds, toggleEnroll } = useApp()
+interface Props {
+  activity: Activity
+  enrolled: boolean
+  pending?: boolean
+  onToggle: (id: string) => void
+  profiles: Map<string, PublicProfile>
+  compact?: boolean
+}
+
+export function ActivityCard({ activity, enrolled, pending = false, onToggle, profiles, compact = false }: Props) {
   const cat = ACTIVITY_CATEGORIES[activity.category]
-  const enrolled = enrolledIds.has(activity.id)
-  const full = activity.availableSpots <= 0 && !enrolled
-  const taken = activity.totalSpots - activity.availableSpots
-  const pct = Math.round((taken / activity.totalSpots) * 100)
-  const low = activity.availableSpots > 0 && activity.availableSpots <= 10
+  const taken = activity.attendee_ids.length
+  const available = Math.max(activity.total_spots - taken, 0)
+  const full = available <= 0 && !enrolled
+  const pct = Math.min(100, Math.round((taken / activity.total_spots) * 100))
+  const low = available > 0 && available <= 10
+  const people: Person[] = activity.attendee_ids.slice(0, 4).map((id) => ({ id, name: profiles.get(id)?.full_name || profiles.get(id)?.nickname || '' }))
+  const toggle = () => onToggle(activity.id)
 
   if (compact) {
     return (
@@ -24,11 +34,11 @@ export function ActivityCard({ activity, compact = false }: { activity: Activity
         <div className="p-4">
           <h3 className="line-clamp-2 min-h-[2.5rem] text-sm font-semibold leading-tight text-slate-900">{activity.name}</h3>
           <p className="mt-2 flex items-center gap-1.5 text-xs text-slate-500">
-            <CalendarDays size={13} /> {formatShortDate(activity.date)} · {formatTime(activity.startTime)}
+            <CalendarDays size={13} /> {formatShortDate(activity.date)} · {formatTime(activity.start_time)}
           </p>
           <div className="mt-3 flex items-center justify-between">
-            <AvatarStack userIds={activity.attendeeIds} max={3} />
-            <EnrollButton enrolled={enrolled} full={full} onClick={() => toggleEnroll(activity.id)} small />
+            <AvatarStack people={people} total={taken} max={3} />
+            <EnrollButton enrolled={enrolled} full={full} pending={pending} onClick={toggle} small />
           </div>
         </div>
       </motion.article>
@@ -49,15 +59,15 @@ export function ActivityCard({ activity, compact = false }: { activity: Activity
         </div>
         <ul className="space-y-1.5 text-sm text-slate-600">
           <li className="flex items-center gap-2"><CalendarDays size={16} className="text-green-700" />{formatShortDate(activity.date)}</li>
-          <li className="flex items-center gap-2"><Clock size={16} className="text-green-700" />{formatTime(activity.startTime)} – {formatTime(activity.endTime)}</li>
+          <li className="flex items-center gap-2"><Clock size={16} className="text-green-700" />{formatTime(activity.start_time)} – {formatTime(activity.end_time)}</li>
           <li className="flex items-center gap-2"><MapPin size={16} className="text-green-700" />{activity.location}</li>
         </ul>
         <div>
           <div className="mb-1.5 flex items-center justify-between text-xs">
             <span className={cn('font-semibold', full ? 'text-rose-600' : low ? 'text-amber-600' : 'text-slate-600')}>
-              {full ? 'Sin cupos' : `${activity.availableSpots} cupos disponibles`}
+              {full ? 'Sin cupos' : `${available} cupos disponibles`}
             </span>
-            <span className="text-slate-400">{taken}/{activity.totalSpots}</span>
+            <span className="text-slate-400">{taken}/{activity.total_spots}</span>
           </div>
           <div className="h-2 overflow-hidden rounded-full bg-slate-100">
             <motion.div
@@ -70,26 +80,27 @@ export function ActivityCard({ activity, compact = false }: { activity: Activity
         </div>
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <AvatarStack userIds={activity.attendeeIds} />
-            <span className="text-xs text-slate-500">{activity.attendeeIds.length} van</span>
+            <AvatarStack people={people} total={taken} />
+            <span className="text-xs text-slate-500">{taken} van</span>
           </div>
-          <EnrollButton enrolled={enrolled} full={full} onClick={() => toggleEnroll(activity.id)} />
+          <EnrollButton enrolled={enrolled} full={full} pending={pending} onClick={toggle} />
         </div>
       </div>
     </motion.article>
   )
 }
 
-function EnrollButton({ enrolled, full, onClick, small }: { enrolled: boolean; full: boolean; onClick: () => void; small?: boolean }) {
+function EnrollButton({ enrolled, full, pending, onClick, small }: { enrolled: boolean; full: boolean; pending: boolean; onClick: () => void; small?: boolean }) {
   return (
     <motion.button
       whileTap={{ scale: 0.92 }}
       whileHover={full ? undefined : { scale: 1.03 }}
-      disabled={full}
+      disabled={full || pending}
       onClick={onClick}
       aria-pressed={enrolled}
       className={cn(
         'flex items-center gap-1.5 rounded-2xl font-semibold transition-colors',
+        pending && 'opacity-60',
         small ? 'px-3 py-2 text-xs' : 'px-5 py-3 text-sm',
         full && 'cursor-not-allowed bg-slate-100 text-slate-400',
         !full && enrolled && 'bg-green-50 text-green-700 ring-1 ring-green-200 hover:bg-green-100',

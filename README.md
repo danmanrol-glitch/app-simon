@@ -1,8 +1,10 @@
 # EAN Connect
 
-Prototipo PWA para estudiantes de la Universidad EAN: actividades, comunidad, consejos para la vida universitaria y perfil con privacidad.
+PWA para estudiantes de la Universidad EAN: actividades, comunidad, consejos para la vida universitaria, perfil con privacidad y asistente con IA. Los datos y la autenticación viven en Supabase.
 
-Stack: Vite · React 18 · TypeScript · Tailwind CSS · React Router · Framer Motion · Lucide React · vite-plugin-pwa.
+Stack: Vite · React 18 · TypeScript · Tailwind CSS · React Router · Framer Motion · Lucide React · vite-plugin-pwa · Supabase.
+
+**Antes de empezar:** sigue `SUPABASE_SETUP.txt` (variables de entorno y `supabase/schema.sql`).
 
 ```bash
 npm install
@@ -13,10 +15,12 @@ npm run preview  # servir el build
 
 ## Estructura
 
-- `src/mock/db.ts`: interfaces y datos simulados (tips, actividades, publicaciones, usuarios, notificaciones, encuesta).
-- `src/context/AppContext.tsx`: estado en memoria (inscripciones, reacciones, comentarios, denuncias/bloqueos, ajustes).
-- `src/pages/`: Inicio, Actividades, Comunidad, Perfil.
-- `src/components/`: barra inferior, tarjetas, hoja modal, calendario, notificaciones, banner de bienestar.
+- `supabase/schema.sql`: tablas, vista `public_profiles`, triggers y políticas RLS.
+- `src/lib/supabase.ts`: cliente de Supabase (lee `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY`).
+- `src/context/AuthContext.tsx`: sesión, perfil, registro, login y edición del perfil.
+- `src/hooks/`: `useActivities` (actividades e inscripciones), `useCommunity` (posts, comentarios, reacciones, denuncias, bloqueos) y `useProfiles` (perfiles públicos).
+- `src/pages/`: Login, Inicio, Actividades, Comunidad, Asistente y Perfil. Todas menos Login exigen sesión.
+- `src/data/catalog.ts`: contenido estático (tips, frases, categorías). Las notificaciones de la campana siguen siendo de ejemplo.
 
 ## EAN Assistant (IA)
 
@@ -26,4 +30,4 @@ El chat vive en `src/components/EanAssistant.tsx` y llama a `POST /api/chat` (`a
 2. `npm run dev`: Vite sirve `/api/chat` con la misma función que corre en Vercel.
 3. En Vercel, agrega `GEMINI_API_KEY` en Settings > Environment Variables y vuelve a desplegar.
 
-Los datos son ficticios y el estado se reinicia al recargar la página.
+`/api/chat` exige la sesión de Supabase del estudiante (header `Authorization: Bearer <access_token>`), así que nadie sin cuenta puede gastar tu cuota de IA.

@@ -1,24 +1,42 @@
 import { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Ban, CalendarDays, Flag, MapPin, MessageCircle, MoreHorizontal, Send, SmilePlus, Users } from 'lucide-react'
-import { useApp } from '../context/AppContext'
-import { CURRENT_USER_ID, getUser, POST_TYPES, REACTIONS, type Post, type ReactionType } from '../mock/db'
+import { POST_TYPES, REACTIONS } from '../data/catalog'
+import type { Post, PublicProfile, ReactionType } from '../types'
 import { Avatar } from './Avatar'
-import { cn, timeAgo } from '../lib'
+import { cn, timeAgo } from '../lib/utils'
 
-export function PostCard({ post }: { post: Post }) {
-  const { myReactions, react, addComment, reportPost, blockAuthor, reportedPostIds } = useApp()
-  const author = getUser(post.authorId)
-  const mine = myReactions[post.id]
+interface Props {
+  post: Post
+  currentUserId: string
+  profiles: Map<string, PublicProfile>
+  blockedIds: Set<string>
+  reported: boolean
+  onReact: (postId: string, reaction: ReactionType) => void
+  onComment: (postId: string, text: string) => Promise<boolean>
+  onReport: (postId: string) => void
+  onBlock: (authorId: string) => void
+}
+
+const nameOf = (profiles: Map<string, PublicProfile>, id: string) => {
+  const p = profiles.get(id)
+  return { id, name: p?.full_name || p?.nickname || 'Estudiante EAN', nickname: p?.nickname || 'estudiante', career: p?.career, semester: p?.semester }
+}
+
+export function PostCard({ post, currentUserId, profiles, blockedIds, reported, onReact, onComment, onReport, onBlock }: Props) {
+  const author = nameOf(profiles, post.author_id)
+  const mine = post.my_reaction ?? undefined
   const [showComments, setShowComments] = useState(false)
   const [showPicker, setShowPicker] = useState(false)
   const [menu, setMenu] = useState(false)
   const [draft, setDraft] = useState('')
+  const [sending, setSending] = useState(false)
   const total = Object.values(post.reactions).reduce((a, b) => a + b, 0)
   const top = (Object.entries(post.reactions) as [ReactionType, number][]).filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1]).slice(0, 3)
-  const isMine = post.authorId === CURRENT_USER_ID
+  const isMine = post.author_id === currentUserId
+  const comments = post.comments.filter((c) => !blockedIds.has(c.author_id))
 
-  if (reportedPostIds.has(post.id)) {
+  if (reported) {
     return (
       <motion.div layout className="rounded-3xl border border-dashed border-slate-200 bg-white/60 p-5 text-center text-sm text-slate-500">
         Denunciaste esta publicación. La ocultamos mientras se revisa.
@@ -26,20 +44,22 @@ export function PostCard({ post }: { post: Post }) {
     )
   }
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!draft.trim()) return
-    addComment(post.id, draft.trim())
-    setDraft('')
+    if (!draft.trim() || sending) return
+    setSending(true)
+    const ok = await onComment(post.id, draft.trim())
+    setSending(false)
+    if (ok) setDraft('')
   }
 
   return (
     <motion.article layout initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.97 }} className="rounded-3xl bg-white p-5 shadow-sm">
       <div className="flex items-start gap-3">
-        <Avatar userId={author.id} />
+        <Avatar person={author} />
         <div className="min-w-0 flex-1">
           <p className="truncate font-semibold text-slate-900">{author.name}</p>
-          <p className="truncate text-xs text-slate-500">{author.career} · {author.semester}.º sem · {timeAgo(post.createdAt)}</p>
+          <p className="truncate text-xs text-slate-500">{[author.career, author.semester && `${author.semester}.º sem`, timeAgo(post.created_at)].filter(Boolean).join(' · ')}</p>
         </div>
         {!isMine && (
           <div className="relative">
@@ -54,10 +74,10 @@ export function PostCard({ post }: { post: Post }) {
                   exit={{ opacity: 0, scale: 0.95, y: -4 }}
                   className="absolute right-0 top-10 z-20 w-48 overflow-hidden rounded-2xl bg-white py-1 shadow-lg ring-1 ring-slate-100"
                 >
-                  <button onClick={() => { setMenu(false); reportPost(post.id) }} className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
+                  <button onClick={() => { setMenu(false); onReport(post.id) }} className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
                     <Flag size={16} /> Denunciar publicación
                   </button>
-                  <button onClick={() => { setMenu(false); blockAuthor(post.authorId) }} className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-rose-600 hover:bg-rose-50">
+                  <button onClick={() => { setMenu(false); onBlock(post.author_id) }} className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-rose-600 hover:bg-rose-50">
                     <Ban size={16} /> Bloquear a {author.nickname}
                   </button>
                 </motion.div>
@@ -72,11 +92,11 @@ export function PostCard({ post }: { post: Post }) {
       </span>
       <p className="mt-2 text-[15px] leading-relaxed text-slate-700">{post.text}</p>
 
-      {post.planDetails && (
+      {(post.plan_when || post.plan_where || post.plan_spots) && (
         <div className="mt-3 space-y-1.5 rounded-2xl bg-slate-50 p-3 text-sm text-slate-600">
-          {post.planDetails.when && <p className="flex items-center gap-2"><CalendarDays size={15} className="text-green-700" />{post.planDetails.when}</p>}
-          {post.planDetails.where && <p className="flex items-center gap-2"><MapPin size={15} className="text-green-700" />{post.planDetails.where}</p>}
-          {post.planDetails.spots && <p className="flex items-center gap-2"><Users size={15} className="text-green-700" />{post.planDetails.spots} cupos</p>}
+          {post.plan_when && <p className="flex items-center gap-2"><CalendarDays size={15} className="text-green-700" />{post.plan_when}</p>}
+          {post.plan_where && <p className="flex items-center gap-2"><MapPin size={15} className="text-green-700" />{post.plan_where}</p>}
+          {post.plan_spots && <p className="flex items-center gap-2"><Users size={15} className="text-green-700" />{post.plan_spots} cupos</p>}
         </div>
       )}
 
@@ -86,14 +106,14 @@ export function PostCard({ post }: { post: Post }) {
           {total > 0 && <span className="ml-1">{total}</span>}
         </span>
         <button onClick={() => setShowComments((s) => !s)} className="hover:text-slate-700">
-          {post.comments.length} comentarios
+          {comments.length} comentarios
         </button>
       </div>
 
       <div className="relative mt-3 flex gap-2 border-t border-slate-100 pt-3">
         <motion.button
           whileTap={{ scale: 0.9 }}
-          onClick={() => react(post.id, mine ?? 'like')}
+          onClick={() => onReact(post.id, mine ?? 'like')}
           className={cn('flex flex-1 items-center justify-center gap-1.5 rounded-2xl py-2.5 text-sm font-medium transition-colors', mine ? 'bg-green-50 text-green-700' : 'text-slate-600 hover:bg-slate-50')}
         >
           <span className="text-base leading-none">{REACTIONS[mine ?? 'like']}</span> {mine ? 'Reaccionaste' : 'Me gusta'}
@@ -121,7 +141,7 @@ export function PostCard({ post }: { post: Post }) {
                   key={r}
                   whileHover={{ scale: 1.3, y: -3 }}
                   whileTap={{ scale: 0.9 }}
-                  onClick={() => { react(post.id, r); setShowPicker(false) }}
+                  onClick={() => { onReact(post.id, r); setShowPicker(false) }}
                   className={cn('rounded-full p-1 text-xl', mine === r && 'bg-green-50')}
                   aria-label={r}
                 >
@@ -137,11 +157,11 @@ export function PostCard({ post }: { post: Post }) {
         {showComments && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
             <div className="space-y-3 pt-4">
-              {post.comments.map((c) => (
+              {comments.map((c) => (
                 <div key={c.id} className="flex gap-2">
-                  <Avatar userId={c.authorId} size="sm" />
+                  <Avatar person={nameOf(profiles, c.author_id)} size="sm" />
                   <div className="rounded-2xl rounded-tl-md bg-slate-50 px-3 py-2">
-                    <p className="text-xs font-semibold text-slate-800">{getUser(c.authorId).name}</p>
+                    <p className="text-xs font-semibold text-slate-800">{nameOf(profiles, c.author_id).name}</p>
                     <p className="text-sm text-slate-700">{c.text}</p>
                   </div>
                 </div>
@@ -151,9 +171,10 @@ export function PostCard({ post }: { post: Post }) {
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}
                   placeholder="Escribe un comentario…"
+                  maxLength={300}
                   className="flex-1 rounded-2xl bg-slate-50 px-4 py-2.5 text-sm outline-none ring-green-600/30 focus:ring-2"
                 />
-                <motion.button whileTap={{ scale: 0.9 }} disabled={!draft.trim()} aria-label="Enviar" className="grid h-10 w-10 place-items-center rounded-2xl bg-green-700 text-white disabled:bg-slate-200">
+                <motion.button whileTap={{ scale: 0.9 }} disabled={!draft.trim() || sending} aria-label="Enviar" className="grid h-10 w-10 place-items-center rounded-2xl bg-green-700 text-white disabled:bg-slate-200">
                   <Send size={16} />
                 </motion.button>
               </form>

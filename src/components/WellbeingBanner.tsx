@@ -1,10 +1,10 @@
+import { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { HeartHandshake } from 'lucide-react'
-import { useApp } from '../context/AppContext'
-import { WELLBEING_CHANNEL, wellbeingSurvey } from '../mock/db'
+import { WELLBEING_CHANNEL, wellbeingSurvey } from '../data/catalog'
 
 export function WellbeingBanner() {
-  const { surveyAnswer, answerSurvey } = useApp()
+  const [surveyAnswer, answerSurvey] = useState<string | null>(null)
   const needsSupport = surveyAnswer === 'Difícil'
 
   return (

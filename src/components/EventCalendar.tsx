@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { ChevronLeft, ChevronRight, Clock, MapPin } from 'lucide-react'
-import { ACTIVITY_CATEGORIES, type Activity } from '../mock/db'
-import { cn, formatTime, parseDate } from '../lib'
+import { ACTIVITY_CATEGORIES } from '../data/catalog'
+import type { Activity } from '../types'
+import { cn, formatTime, parseDate } from '../lib/utils'
 
 const MONTHS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
 const WEEK = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
@@ -34,7 +35,7 @@ export function EventCalendar({ events }: { events: Activity[] }) {
 
   const monthEvents = events
     .filter((e) => { const d = parseDate(e.date); return d.getMonth() === month.getMonth() && d.getFullYear() === month.getFullYear() })
-    .sort((a, b) => (a.date + a.startTime).localeCompare(b.date + b.startTime))
+    .sort((a, b) => (a.date + a.start_time).localeCompare(b.date + b.start_time))
   const shown = selected ? byDay[selected] ?? [] : monthEvents
 
   const shift = (n: number) => { setMonth(new Date(month.getFullYear(), month.getMonth() + n, 1)); setSelected(null) }
@@ -80,7 +81,7 @@ export function EventCalendar({ events }: { events: Activity[] }) {
               <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-white text-xl shadow-sm">{ACTIVITY_CATEGORIES[e.category].emoji}</div>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold text-slate-900">{e.name}</p>
-                <p className="flex items-center gap-1 text-xs text-slate-500"><Clock size={12} /> {parseDate(e.date).getDate()} · {formatTime(e.startTime)}</p>
+                <p className="flex items-center gap-1 text-xs text-slate-500"><Clock size={12} /> {parseDate(e.date).getDate()} · {formatTime(e.start_time)}</p>
                 <p className="flex items-center gap-1 truncate text-xs text-slate-500"><MapPin size={12} /> {e.location}</p>
               </div>
             </motion.div>

@@ -2,14 +2,17 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { ArrowRight, Bot, Quote, Sparkles, Users } from 'lucide-react'
-import { useApp } from '../context/AppContext'
-import { MOTIVATIONAL_QUOTES, TIP_CATEGORIES, tips, type Tip } from '../mock/db'
+import { useAuth } from '../context/AuthContext'
+import { useActivities } from '../hooks/useActivities'
+import { useProfiles } from '../hooks/useProfiles'
+import { MOTIVATIONAL_QUOTES, TIP_CATEGORIES, tips, type Tip } from '../data/catalog'
+import type { Activity } from '../types'
 import { ActivityCard } from '../components/ActivityCard'
 import { NotificationBell } from '../components/NotificationBell'
 import { WellbeingBanner } from '../components/WellbeingBanner'
 import { Avatar } from '../components/Avatar'
 import { Sheet } from '../components/Sheet'
-import { cn } from '../lib'
+import { cn, todayISO } from '../lib/utils'
 
 const greeting = () => {
   const h = new Date().getHours()
@@ -22,24 +25,31 @@ const dayOfYear = () => {
 }
 
 export default function Home() {
-  const { user, activities } = useApp()
+  const { session, profile } = useAuth()
+  const { activities, enrolledIds, pending, loading, toggleEnroll } = useActivities()
   const [openTip, setOpenTip] = useState<Tip | null>(null)
   const quote = MOTIVATIONAL_QUOTES[dayOfYear() % MOTIVATIONAL_QUOTES.length]
 
   const recommended = useMemo(() => {
-    const score = (a: (typeof activities)[number]) =>
-      (user.favoriteActivities.includes(a.category) ? 2 : 0) + a.tags.filter((t) => user.interests.includes(t)).length
-    return [...activities].filter((a) => score(a) > 0).sort((a, b) => score(b) - score(a))
-  }, [activities, user])
+    const favorites = profile?.favorite_activities ?? []
+    const interests = profile?.interests ?? []
+    const score = (a: Activity) => (favorites.includes(a.category) ? 2 : 0) + a.tags.filter((t) => interests.includes(t)).length
+    const upcoming = activities.filter((a) => a.date >= todayISO())
+    const matched = upcoming.filter((a) => score(a) > 0).sort((a, b) => score(b) - score(a))
+    // Si aún no hay intereses en el perfil, muestra las próximas actividades.
+    return (matched.length ? matched : upcoming).slice(0, 8)
+  }, [activities, profile])
+  const profiles = useProfiles(recommended.flatMap((a) => a.attendee_ids.slice(0, 3)))
+  const name = profile?.nickname || profile?.full_name || 'estudiante'
 
   return (
     <div className="space-y-7">
       <header className="flex items-center justify-between px-5 pt-6">
         <div className="flex items-center gap-3">
-          <Avatar userId={user.id} />
+          <Avatar person={{ id: session?.user.id ?? 'me', name: profile?.full_name || name }} />
           <div>
             <p className="text-sm text-slate-500">{greeting()},</p>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">{user.nickname} 👋</h1>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900">{name} 👋</h1>
           </div>
         </div>
         <NotificationBell />
@@ -65,14 +75,26 @@ export default function Home() {
         <div className="mb-3 flex items-end justify-between px-5">
           <div>
             <h2 className="flex items-center gap-1.5 text-lg font-bold text-slate-900"><Sparkles size={18} className="text-green-700" /> Para ti</h2>
-            <p className="text-xs text-slate-500">Según tus intereses</p>
+            <p className="text-xs text-slate-500">{profile?.interests.length ? 'Según tus intereses' : 'Próximas actividades · agrega intereses en tu perfil'}</p>
           </div>
           <Link to="/actividades" className="flex items-center gap-1 text-sm font-semibold text-green-700 hover:text-green-800">
             Ver todas <ArrowRight size={15} />
           </Link>
         </div>
         <div className="no-scrollbar flex snap-x snap-mandatory gap-4 overflow-x-auto px-5 pb-2">
-          {recommended.map((a) => <ActivityCard key={a.id} activity={a} compact />)}
+          {loading && [0, 1].map((i) => <div key={i} className="h-56 w-60 shrink-0 animate-pulse rounded-3xl bg-white shadow-sm" />)}
+          {recommended.map((a) => (
+            <ActivityCard
+              key={a.id}
+              activity={a}
+              compact
+              enrolled={enrolledIds.has(a.id)}
+              pending={pending.has(a.id)}
+              onToggle={toggleEnroll}
+              profiles={profiles}
+            />
+          ))}
+          {!loading && recommended.length === 0 && <p className="text-sm text-slate-500">No hay actividades próximas por ahora.</p>}
         </div>
       </section>
 

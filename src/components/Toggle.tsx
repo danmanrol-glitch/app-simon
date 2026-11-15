@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { cn } from '../lib'
+import { cn } from '../lib/utils'
 
 export function Toggle({ checked, onChange, label, description }: { checked: boolean; onChange: (v: boolean) => void; label: string; description?: string }) {
   return (

@@ -1,20 +1,26 @@
 import { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Plus } from 'lucide-react'
-import { useApp } from '../context/AppContext'
-import { POST_FILTERS, POST_TYPES, type PostFilter, type PostType } from '../mock/db'
+import { POST_CATEGORIES, POST_TYPES } from '../data/catalog'
+import type { PostCategory, PostType } from '../types'
+import { useAuth } from '../context/AuthContext'
+import { useCommunity, type NewPostInput } from '../hooks/useCommunity'
+import { useProfiles } from '../hooks/useProfiles'
+import { ErrorState, LoadingCards } from '../components/StateViews'
 import { PageHeader } from '../components/PageHeader'
 import { Chip } from '../components/Chip'
 import { PostCard } from '../components/PostCard'
 import { Sheet } from '../components/Sheet'
-import { cn } from '../lib'
+import { cn } from '../lib/utils'
 
 export default function Community() {
-  const { posts, hiddenAuthorIds } = useApp()
-  const [filter, setFilter] = useState<PostFilter | 'todos'>('todos')
+  const { session } = useAuth()
+  const { posts, blockedIds, reportedIds, loading, error, reload, addPost, react, addComment, reportPost, blockAuthor } = useCommunity()
+  const [filter, setFilter] = useState<PostCategory | 'todos'>('todos')
   const [composer, setComposer] = useState(false)
+  const profiles = useProfiles(posts.flatMap((p) => [p.author_id, ...p.comments.map((c) => c.author_id)]))
 
-  const list = posts.filter((p) => !hiddenAuthorIds.has(p.authorId) && (filter === 'todos' || p.filter === filter))
+  const list = posts.filter((p) => !blockedIds.has(p.author_id) && (filter === 'todos' || p.category === filter))
 
   return (
     <div>
@@ -35,15 +41,34 @@ export default function Community() {
       />
       <div className="no-scrollbar sticky top-0 z-10 -mt-1 flex gap-2 overflow-x-auto bg-slate-50/90 px-5 py-3 backdrop-blur">
         <Chip active={filter === 'todos'} onClick={() => setFilter('todos')}>Todos</Chip>
-        {(Object.keys(POST_FILTERS) as PostFilter[]).map((k) => (
-          <Chip key={k} active={filter === k} onClick={() => setFilter(k)}>{POST_FILTERS[k]}</Chip>
+        {(Object.keys(POST_CATEGORIES) as PostCategory[]).map((k) => (
+          <Chip key={k} active={filter === k} onClick={() => setFilter(k)}>{POST_CATEGORIES[k]}</Chip>
         ))}
       </div>
       <div className="space-y-4 px-5 pt-2">
-        <AnimatePresence mode="popLayout">
-          {list.map((p) => <PostCard key={p.id} post={p} />)}
-        </AnimatePresence>
-        {list.length === 0 && (
+        {loading ? (
+          <LoadingCards height="h-48" />
+        ) : error ? (
+          <ErrorState message={error} onRetry={reload} />
+        ) : (
+          <AnimatePresence mode="popLayout">
+            {list.map((p) => (
+              <PostCard
+                key={p.id}
+                post={p}
+                currentUserId={session?.user.id ?? ''}
+                profiles={profiles}
+                blockedIds={blockedIds}
+                reported={reportedIds.has(p.id)}
+                onReact={react}
+                onComment={addComment}
+                onReport={reportPost}
+                onBlock={blockAuthor}
+              />
+            ))}
+          </AnimatePresence>
+        )}
+        {!loading && !error && list.length === 0 && (
           <div className="rounded-3xl bg-white p-8 text-center shadow-sm">
             <p className="text-3xl">💬</p>
             <p className="mt-2 font-semibold text-slate-800">Aún no hay publicaciones aquí</p>
@@ -51,23 +76,26 @@ export default function Community() {
           </div>
         )}
       </div>
-      <Composer open={composer} onClose={() => setComposer(false)} />
+      <Composer open={composer} onClose={() => setComposer(false)} onSubmit={addPost} />
     </div>
   )
 }
 
-function Composer({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { addPost } = useApp()
+function Composer({ open, onClose, onSubmit }: { open: boolean; onClose: () => void; onSubmit: (input: NewPostInput) => Promise<boolean> }) {
   const [type, setType] = useState<PostType>('plan')
-  const [filter, setFilter] = useState<PostFilter>('recreativo')
+  const [filter, setFilter] = useState<PostCategory>('recreativo')
+  const [sending, setSending] = useState(false)
   const [text, setText] = useState('')
   const [when, setWhen] = useState('')
   const [where, setWhere] = useState('')
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!text.trim()) return
-    addPost({ type, filter, text: text.trim(), when: when.trim(), where: where.trim() })
+    if (!text.trim() || sending) return
+    setSending(true)
+    const ok = await onSubmit({ type, category: filter, text: text.trim(), planWhen: when.trim(), planWhere: where.trim() })
+    setSending(false)
+    if (!ok) return
     setText(''); setWhen(''); setWhere('')
     onClose()
   }
@@ -95,8 +123,8 @@ function Composer({ open, onClose }: { open: boolean; onClose: () => void }) {
         <div>
           <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">Categoría</p>
           <div className="flex gap-2">
-            {(Object.keys(POST_FILTERS) as PostFilter[]).map((k) => (
-              <Chip key={k} active={filter === k} onClick={() => setFilter(k)}>{POST_FILTERS[k]}</Chip>
+            {(Object.keys(POST_CATEGORIES) as PostCategory[]).map((k) => (
+              <Chip key={k} active={filter === k} onClick={() => setFilter(k)}>{POST_CATEGORIES[k]}</Chip>
             ))}
           </div>
         </div>
@@ -110,13 +138,13 @@ function Composer({ open, onClose }: { open: boolean; onClose: () => void }) {
         />
         {type === 'plan' && (
           <div className="grid grid-cols-2 gap-2">
-            <input value={when} onChange={(e) => setWhen(e.target.value)} placeholder="¿Cuándo?" className={input} />
-            <input value={where} onChange={(e) => setWhere(e.target.value)} placeholder="¿Dónde?" className={input} />
+            <input value={when} maxLength={80} onChange={(e) => setWhen(e.target.value)} placeholder="¿Cuándo?" className={input} />
+            <input value={where} maxLength={80} onChange={(e) => setWhere(e.target.value)} placeholder="¿Dónde?" className={input} />
           </div>
         )}
         <p className="text-xs text-slate-400">Recuerda: respeto ante todo. Las publicaciones ofensivas pueden ser denunciadas.</p>
-        <motion.button whileTap={{ scale: 0.97 }} disabled={!text.trim()} className="w-full rounded-2xl bg-green-700 py-3.5 font-semibold text-white shadow-sm hover:bg-green-800 disabled:bg-slate-200 disabled:text-slate-400">
-          Publicar
+        <motion.button whileTap={{ scale: 0.97 }} disabled={!text.trim() || sending} className="w-full rounded-2xl bg-green-700 py-3.5 font-semibold text-white shadow-sm hover:bg-green-800 disabled:bg-slate-200 disabled:text-slate-400">
+          {sending ? 'Publicando…' : 'Publicar'}
         </motion.button>
       </form>
     </Sheet>
