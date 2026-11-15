@@ -101,7 +101,7 @@ function EnrollButton({ enrolled, full, pending, onClick, small }: { enrolled: b
       className={cn(
         'flex items-center gap-1.5 rounded-2xl font-semibold transition-colors',
         pending && 'opacity-60',
-        small ? 'px-3 py-2 text-xs' : 'px-5 py-3 text-sm',
+        small ? 'min-h-[40px] px-3.5 py-2 text-xs' : 'min-h-[44px] px-5 py-3 text-sm',
         full && 'cursor-not-allowed bg-slate-100 text-slate-400',
         !full && enrolled && 'bg-green-50 text-green-700 ring-1 ring-green-200 hover:bg-green-100',
         !full && !enrolled && 'bg-green-700 text-white shadow-sm shadow-green-900/20 hover:bg-green-800',

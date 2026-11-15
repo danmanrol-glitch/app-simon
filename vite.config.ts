@@ -52,6 +52,18 @@ export default defineConfig(({ mode }) => {
   }
 
   return {
+    build: {
+      rollupOptions: {
+        output: {
+          // Librerías en archivos separados: se guardan en caché y no se re-descargan en cada deploy.
+          manualChunks: {
+            react: ['react', 'react-dom', 'react-router-dom'],
+            motion: ['framer-motion'],
+            supabase: ['@supabase/supabase-js'],
+          },
+        },
+      },
+    },
     plugins: [
       react(),
       devApi(),

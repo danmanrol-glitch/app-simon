@@ -13,11 +13,11 @@ const TABS = [
 
 export function BottomNav() {
   return (
-    <nav className="absolute inset-x-0 bottom-0 z-40 px-4 pb-[max(env(safe-area-inset-bottom),12px)]">
-      <ul className="flex items-center justify-around rounded-3xl border border-white/60 bg-white/70 px-1.5 py-2 shadow-lg shadow-slate-900/5 backdrop-blur-xl">
+    <nav className="absolute inset-x-0 bottom-0 z-40 px-3 pb-[max(env(safe-area-inset-bottom),10px)] transition-transform duration-200 group-data-[keyboard=open]:pointer-events-none group-data-[keyboard=open]:translate-y-full sm:px-4">
+      <ul className="flex items-center justify-around rounded-3xl border border-white/60 bg-white/70 px-1 py-1.5 shadow-lg shadow-slate-900/5 backdrop-blur-xl">
         {TABS.map(({ to, label, icon: Icon }) => (
           <li key={to} className="flex-1">
-            <NavLink to={to} end={to === '/'} className="relative flex flex-col items-center gap-0.5 rounded-2xl py-2">
+            <NavLink to={to} end={to === '/'} className="relative flex min-h-[52px] flex-col items-center justify-center gap-0.5 rounded-2xl px-0.5 py-1.5">
               {({ isActive }) => (
                 <>
                   {isActive && (
@@ -28,7 +28,7 @@ export function BottomNav() {
                     />
                   )}
                   <Icon size={22} strokeWidth={isActive ? 2.4 : 1.9} className={cn('relative transition-colors', isActive ? 'text-green-700' : 'text-slate-400')} />
-                  <span className={cn('relative text-[10px] font-medium transition-colors', isActive ? 'text-green-700' : 'text-slate-400')}>{label}</span>
+                  <span className={cn('relative max-w-full truncate text-[10px] font-medium leading-tight tracking-tight transition-colors', isActive ? 'text-green-700' : 'text-slate-400')}>{label}</span>
                 </>
               )}
             </NavLink>

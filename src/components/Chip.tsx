@@ -8,7 +8,7 @@ export function Chip({ active, onClick, children }: { active: boolean; onClick: 
       whileTap={{ scale: 0.94 }}
       onClick={onClick}
       className={cn(
-        'shrink-0 whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition-colors',
+        'min-h-[40px] shrink-0 whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition-colors',
         active ? 'bg-green-700 text-white shadow-sm' : 'bg-white text-slate-600 shadow-sm hover:bg-slate-100',
       )}
     >

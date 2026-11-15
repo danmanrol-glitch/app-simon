@@ -10,6 +10,7 @@ import type { Activity } from '../types'
 import { ActivityCard } from '../components/ActivityCard'
 import { NotificationBell } from '../components/NotificationBell'
 import { WellbeingBanner } from '../components/WellbeingBanner'
+import { InstallBanner } from '../components/InstallBanner'
 import { Avatar } from '../components/Avatar'
 import { Sheet } from '../components/Sheet'
 import { cn, todayISO } from '../lib/utils'
@@ -55,6 +56,8 @@ export default function Home() {
         <NotificationBell />
       </header>
 
+      <InstallBanner />
+
       <motion.section initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="mx-5 rounded-3xl bg-white p-5 shadow-sm">
         <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-green-700">
           <Quote size={14} /> Frase del día
@@ -77,7 +80,7 @@ export default function Home() {
             <h2 className="flex items-center gap-1.5 text-lg font-bold text-slate-900"><Sparkles size={18} className="text-green-700" /> Para ti</h2>
             <p className="text-xs text-slate-500">{profile?.interests.length ? 'Según tus intereses' : 'Próximas actividades · agrega intereses en tu perfil'}</p>
           </div>
-          <Link to="/actividades" className="flex items-center gap-1 text-sm font-semibold text-green-700 hover:text-green-800">
+          <Link to="/actividades" className="-my-3 flex items-center gap-1 py-3 pl-3 text-sm font-semibold text-green-700 hover:text-green-800">
             Ver todas <ArrowRight size={15} />
           </Link>
         </div>
