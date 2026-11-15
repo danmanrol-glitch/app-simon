@@ -47,8 +47,8 @@ export default function Login() {
   return (
     <div className="mx-auto flex min-h-[100dvh] max-w-md flex-col bg-slate-50 px-6 pb-10 pt-14 shadow-2xl shadow-slate-900/10">
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="text-center">
-        <div className="mx-auto grid h-20 w-20 place-items-center rounded-3xl bg-gradient-to-br from-green-600 to-emerald-800 text-2xl font-bold text-white shadow-md">EAN</div>
-        <h1 className="mt-5 text-3xl font-bold tracking-tight text-slate-900">EAN Connect</h1>
+        <img src="/ean-logo.png" alt="Universidad EAN" width={551} height={217} className="mx-auto h-auto w-44" />
+        <h1 className="mt-6 text-3xl font-bold tracking-tight text-slate-900">EAN Connect</h1>
         <p className="mt-1 text-sm text-slate-500">Actividades, comunidad y bienestar para estudiantes EAN</p>
       </motion.div>
 
