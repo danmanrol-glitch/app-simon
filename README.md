@@ -18,4 +18,12 @@ npm run preview  # servir el build
 - `src/pages/`: Inicio, Actividades, Comunidad, Perfil.
 - `src/components/`: barra inferior, tarjetas, hoja modal, calendario, notificaciones, banner de bienestar.
 
+## EAN Assistant (IA)
+
+El chat vive en `src/components/EanAssistant.tsx` y llama a `POST /api/chat` (`api/chat.ts`), una Vercel Function que usa el SDK de Anthropic con respuesta en streaming. La API key se lee solo en el servidor desde `ANTHROPIC_API_KEY`; nunca se usa el prefijo `VITE_`, porque Vite publica esas variables en el navegador.
+
+1. Copia `.env.example` como `.env` y pon tu `ANTHROPIC_API_KEY`.
+2. `npm run dev`: Vite sirve `/api/chat` con la misma función que corre en Vercel.
+3. En Vercel, agrega `ANTHROPIC_API_KEY` en Settings > Environment Variables y despliega.
+
 Los datos son ficticios y el estado se reinicia al recargar la página.

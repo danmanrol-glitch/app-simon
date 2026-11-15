@@ -4,6 +4,7 @@ import Home from './pages/Home'
 import Activities from './pages/Activities'
 import Community from './pages/Community'
 import Profile from './pages/Profile'
+import Assistant from './pages/Assistant'
 
 export default function App() {
   return (
@@ -12,6 +13,7 @@ export default function App() {
         <Route index element={<Home />} />
         <Route path="actividades" element={<Activities />} />
         <Route path="comunidad" element={<Community />} />
+        <Route path="asistente" element={<Assistant />} />
         <Route path="perfil" element={<Profile />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

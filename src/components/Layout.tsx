@@ -16,7 +16,7 @@ export function Layout() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.22, ease: 'easeOut' }}
-            className="no-scrollbar h-full overflow-y-auto pb-32"
+            className={location.pathname === '/asistente' ? 'h-full overflow-hidden' : 'no-scrollbar h-full overflow-y-auto pb-32'}
           >
             {outlet}
           </motion.main>

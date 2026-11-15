@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ArrowRight, Quote, Sparkles, Users } from 'lucide-react'
+import { ArrowRight, Bot, Quote, Sparkles, Users } from 'lucide-react'
 import { useApp } from '../context/AppContext'
 import { MOTIVATIONAL_QUOTES, TIP_CATEGORIES, tips, type Tip } from '../mock/db'
 import { ActivityCard } from '../components/ActivityCard'
@@ -51,6 +51,15 @@ export default function Home() {
         </div>
         <p className="mt-2 text-[15px] font-medium leading-relaxed text-slate-800">{quote}</p>
       </motion.section>
+
+      <Link to="/asistente" className="mx-5 flex items-center gap-4 rounded-3xl bg-gradient-to-br from-green-700 to-emerald-800 p-5 text-white shadow-md transition-transform hover:-translate-y-0.5">
+        <div className="grid h-12 w-12 place-items-center rounded-2xl bg-white/15 backdrop-blur"><Bot size={24} /></div>
+        <div className="flex-1">
+          <p className="font-semibold">Pregúntale a EAN Assistant</p>
+          <p className="text-sm text-green-100">Sedes, procesos, tips y más, con IA</p>
+        </div>
+        <ArrowRight size={20} />
+      </Link>
 
       <section>
         <div className="mb-3 flex items-end justify-between px-5">
