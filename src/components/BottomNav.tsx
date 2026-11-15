@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { Bot, CalendarHeart, Home, User, Users } from 'lucide-react'
 import { cn } from '../lib/utils'
 
-const TABS = [
+export const TABS = [
   { to: '/', label: 'Inicio', icon: Home },
   { to: '/actividades', label: 'Actividades', icon: CalendarHeart },
   { to: '/comunidad', label: 'Comunidad', icon: Users },
@@ -13,7 +13,7 @@ const TABS = [
 
 export function BottomNav() {
   return (
-    <nav className="absolute inset-x-0 bottom-0 z-40 px-3 pb-[max(env(safe-area-inset-bottom),10px)] transition-transform duration-200 group-data-[keyboard=open]:pointer-events-none group-data-[keyboard=open]:translate-y-full sm:px-4">
+    <nav className="absolute inset-x-0 bottom-0 z-40 mx-auto max-w-md px-3 lg:hidden pb-[max(env(safe-area-inset-bottom),10px)] transition-transform duration-200 group-data-[keyboard=open]:pointer-events-none group-data-[keyboard=open]:translate-y-full sm:px-4">
       <ul className="flex items-center justify-around rounded-3xl border border-white/60 bg-white/70 px-1 py-1.5 shadow-lg shadow-slate-900/5 backdrop-blur-xl">
         {TABS.map(({ to, label, icon: Icon }) => (
           <li key={to} className="flex-1">

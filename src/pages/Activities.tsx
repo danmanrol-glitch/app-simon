@@ -34,11 +34,11 @@ export default function Activities() {
           </Chip>
         ))}
       </div>
-      <div className="space-y-5 px-5 pt-2">
+      <div className="grid gap-5 px-5 pt-2 md:grid-cols-2 xl:grid-cols-3">
         {loading ? (
-          <LoadingCards height="h-80" />
+          <div className="col-span-full"><LoadingCards height="h-80" /></div>
         ) : error ? (
-          <ErrorState message={error} onRetry={reload} />
+          <div className="col-span-full"><ErrorState message={error} onRetry={reload} /></div>
         ) : (
           <>
             <AnimatePresence mode="popLayout">
@@ -54,7 +54,7 @@ export default function Activities() {
               ))}
             </AnimatePresence>
             {list.length === 0 && (
-              <div className="rounded-3xl bg-white p-8 text-center shadow-sm">
+              <div className="col-span-full rounded-3xl bg-white p-8 text-center shadow-sm">
                 <p className="text-3xl">🗓️</p>
                 <p className="mt-2 font-semibold text-slate-800">Nada por aquí todavía</p>
                 <p className="text-sm text-slate-500">

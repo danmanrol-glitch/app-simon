@@ -5,7 +5,7 @@ export function Sheet({ open, onClose, title, children }: { open: boolean; onClo
   return (
     <AnimatePresence>
       {open && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center">
+        <div className="fixed inset-0 z-50 flex items-end justify-center lg:items-center lg:p-6">
           <motion.div
             className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
             initial={{ opacity: 0 }}
@@ -16,13 +16,13 @@ export function Sheet({ open, onClose, title, children }: { open: boolean; onClo
           <motion.div
             role="dialog"
             aria-label={title}
-            className="scroll-area relative max-h-[88dvh] w-full max-w-md overflow-y-auto rounded-t-3xl bg-white px-5 pb-[max(env(safe-area-inset-bottom),2rem)] pt-3 shadow-xl"
+            className="scroll-area relative max-h-[88dvh] w-full max-w-md overflow-y-auto rounded-t-3xl bg-white px-5 lg:max-w-lg lg:rounded-3xl lg:pb-8 pb-[max(env(safe-area-inset-bottom),2rem)] pt-3 shadow-xl"
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 320 }}
           >
-            <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-slate-200" />
+            <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-slate-200 lg:hidden" />
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-bold text-slate-900">{title}</h2>
               <button onClick={onClose} aria-label="Cerrar" className="-mr-2 grid h-11 w-11 place-items-center rounded-full text-slate-500 hover:bg-slate-100">

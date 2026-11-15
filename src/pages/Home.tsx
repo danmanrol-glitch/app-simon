@@ -58,14 +58,15 @@ export default function Home() {
 
       <InstallBanner />
 
-      <motion.section initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="mx-5 rounded-3xl bg-white p-5 shadow-sm">
+      <div className="mx-5 grid gap-7 md:grid-cols-2 md:gap-5">
+      <motion.section initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="rounded-3xl bg-white p-5 shadow-sm">
         <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-green-700">
           <Quote size={14} /> Frase del día
         </div>
         <p className="mt-2 text-[15px] font-medium leading-relaxed text-slate-800">{quote}</p>
       </motion.section>
 
-      <Link to="/asistente" className="mx-5 flex items-center gap-4 rounded-3xl bg-gradient-to-br from-green-700 to-emerald-800 p-5 text-white shadow-md transition-transform hover:-translate-y-0.5">
+      <Link to="/asistente" className="flex items-center gap-4 rounded-3xl bg-gradient-to-br from-green-700 to-emerald-800 p-5 text-white shadow-md transition-transform hover:-translate-y-0.5">
         <div className="grid h-12 w-12 place-items-center rounded-2xl bg-white/15 backdrop-blur"><Bot size={24} /></div>
         <div className="flex-1">
           <p className="font-semibold">Pregúntale a EAN Assistant</p>
@@ -73,6 +74,7 @@ export default function Home() {
         </div>
         <ArrowRight size={20} />
       </Link>
+      </div>
 
       <section>
         <div className="mb-3 flex items-end justify-between px-5">
@@ -106,7 +108,7 @@ export default function Home() {
           <h2 className="text-lg font-bold text-slate-900">Sobrevive y disfruta la U</h2>
           <p className="text-xs text-slate-500">Consejos rápidos de 1 a 2 minutos</p>
         </div>
-        <div className="grid grid-cols-2 gap-3 px-5">
+        <div className="grid grid-cols-2 gap-3 px-5 md:grid-cols-4">
           {tips.map((t, i) => (
             <motion.button
               key={t.id}

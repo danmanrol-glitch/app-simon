@@ -45,7 +45,16 @@ export default function Login() {
   const input = 'w-full rounded-2xl bg-white px-4 py-3.5 text-[15px] shadow-sm outline-none ring-1 ring-slate-200 focus:ring-2 focus:ring-green-600/40'
 
   return (
-    <div className="mx-auto flex min-h-[100dvh] max-w-md flex-col bg-slate-50 px-6 pb-10 pt-14 shadow-2xl shadow-slate-900/10">
+    <div className="min-h-[100dvh] bg-slate-50 lg:grid lg:grid-cols-2">
+      <aside className="hidden flex-col justify-between bg-gradient-to-br from-green-700 to-emerald-900 p-12 text-white lg:flex">
+        <img src="/ean-logo-white.png" alt="Universidad EAN" className="h-auto w-40" />
+        <div>
+          <h2 className="max-w-md text-4xl font-bold leading-tight tracking-tight">Tu vida en la U, conectada.</h2>
+          <p className="mt-4 max-w-md text-lg text-green-50/90">Encuentra actividades, haz amigos, únete a la comunidad y recibe apoyo cuando lo necesites.</p>
+        </div>
+        <p className="text-sm text-green-100/70">Universidad EAN · Bogotá</p>
+      </aside>
+    <div className="mx-auto flex min-h-[100dvh] w-full max-w-md flex-col px-6 pb-10 pt-[max(env(safe-area-inset-top),3.5rem)] lg:justify-center lg:pt-10">
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="text-center">
         <img src="/ean-logo.png" alt="Universidad EAN" width={551} height={217} className="mx-auto h-auto w-44" />
         <h1 className="mt-6 text-3xl font-bold tracking-tight text-slate-900">EAN Connect</h1>
@@ -124,6 +133,7 @@ export default function Login() {
           </form>
         </>
       )}
+    </div>
     </div>
   )
 }
