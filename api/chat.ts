@@ -63,39 +63,69 @@ const REFUSAL_TEXT = 'No puedo ayudarte con eso, pero si es un tema de la U te r
 
 /* ─────────────── Gemini ─────────────── */
 
+const RETRYABLE_STATUS = new Set([429, 500, 502, 503, 504])
+const GEMINI_FIRST_CHUNK_TIMEOUT_MS = 12_000
+
+function geminiModels() {
+  const primary = process.env.GEMINI_MODEL || 'gemini-3.8-flash'
+  const fallbacks = (process.env.GEMINI_FALLBACK_MODELS ?? 'gemini-3.6-flash').split(',').map((m) => m.trim()).filter(Boolean)
+  return [...new Set([primary, ...fallbacks])]
+}
+
 async function* streamGemini(messages: IncomingMessage[]): AsyncGenerator<string> {
   if (!process.env.GEMINI_API_KEY) throw new ChatError('Falta GEMINI_API_KEY en el servidor.', 500)
   const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
-  let response
-  try {
-    response = await ai.models.generateContentStream({
-      model: process.env.GEMINI_MODEL || 'gemini-3.8-flash',
-      contents: messages.map((m) => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] })),
-      config: {
-        systemInstruction: SYSTEM_PROMPT,
-        maxOutputTokens: 2048,
-        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-      },
-    })
-  } catch (err) {
-    if (err instanceof GeminiApiError) {
-      console.error(`Error de Gemini (${err.status}):`, err.message)
-      if (err.status === 429) throw new ChatError('Hay muchas personas usando el asistente. Intenta en un minuto.', 429)
-      if (err.status === 400 || err.status === 401 || err.status === 403) throw new ChatError('El asistente no está disponible por un problema de configuración.', 500)
-      throw new ChatError('El asistente no pudo responder. Intenta de nuevo.', 502)
+  const contents = messages.map((m) => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] }))
+
+  // Prueba el modelo principal y, si está saturado o no responde a tiempo, pasa al siguiente.
+  for (const model of geminiModels()) {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), GEMINI_FIRST_CHUNK_TIMEOUT_MS)
+    let iterator: AsyncGenerator<{ text?: string }>
+    let first: IteratorResult<{ text?: string }>
+    try {
+      iterator = await ai.models.generateContentStream({
+        model,
+        contents,
+        config: {
+          systemInstruction: SYSTEM_PROMPT,
+          maxOutputTokens: 2048,
+          thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+          abortSignal: controller.signal,
+        },
+      })
+      first = await iterator.next()
+    } catch (err) {
+      clearTimeout(timer)
+      const status = err instanceof GeminiApiError ? err.status : undefined
+      if (controller.signal.aborted || (status !== undefined && RETRYABLE_STATUS.has(status))) {
+        console.warn(`Gemini ${model} no disponible (${status ?? 'timeout'}); probando el siguiente modelo.`)
+        continue
+      }
+      if (err instanceof GeminiApiError) {
+        console.error(`Error de Gemini (${err.status}):`, err.message)
+        if (err.status === 400 || err.status === 401 || err.status === 403 || err.status === 404) {
+          throw new ChatError('El asistente no está disponible por un problema de configuración.', 500)
+        }
+        throw new ChatError('El asistente no pudo responder. Intenta de nuevo.', 502)
+      }
+      throw err
     }
-    throw err
-  }
-  let sent = false
-  for await (const chunk of response) {
-    const text = chunk.text
-    if (text) {
-      sent = true
-      yield text
+    clearTimeout(timer)
+
+    let sent = false
+    for (let chunk = first; !chunk.done; chunk = await iterator.next()) {
+      const text = chunk.value.text
+      if (text) {
+        sent = true
+        yield text
+      }
     }
+    // Gemini no devuelve texto cuando bloquea la respuesta por sus filtros de seguridad.
+    if (!sent) yield REFUSAL_TEXT
+    return
   }
-  // Gemini no devuelve texto cuando bloquea la respuesta por sus filtros de seguridad.
-  if (!sent) yield REFUSAL_TEXT
+  throw new ChatError('El asistente está muy ocupado en este momento. Intenta de nuevo en un minuto.', 503)
 }
 
 /* ─────────────── Claude ─────────────── */
