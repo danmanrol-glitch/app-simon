@@ -70,7 +70,7 @@ export function EanAssistant() {
 
       if (!res.ok || !res.body) {
         const data = await res.json().catch(() => null)
-        throw new Error(data?.error ?? 'No pude conectarme con el asistente.')
+        throw new Error(data?.error ?? `No pude conectarme con el asistente (error ${res.status}). Intenta de nuevo.`)
       }
 
       const reader = res.body.getReader()

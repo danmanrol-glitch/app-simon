@@ -4,7 +4,11 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { ApiError as GeminiApiError, GoogleGenAI, ThinkingLevel } from '@google/genai'
 import { createClient } from '@supabase/supabase-js'
-import { PUBLIC_SUPABASE_KEY, PUBLIC_SUPABASE_URL } from '../src/config'
+
+// Valores públicos de Supabase (los mismos de src/config.ts). Se repiten aquí porque las
+// funciones de Vercel corren como ESM y un import relativo sin extensión rompe la función.
+const PUBLIC_SUPABASE_URL = 'https://iikzjjamjbxbrqleebzc.supabase.co'
+const PUBLIC_SUPABASE_KEY = 'sb_publishable_lGGPMgGduL41eFIRB3Uucg_yvELNrA0'
 
 export const config = { maxDuration: 60 }
 
