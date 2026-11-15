@@ -67,7 +67,7 @@ export function PostCard({ post, currentUserId, profiles, blockedIds, reported, 
         </div>
         {(
           <div className="relative">
-            <button onClick={() => setMenu((m) => !m)} aria-label="Más opciones" className="rounded-full p-2 text-slate-400 hover:bg-slate-100">
+            <button onClick={() => setMenu((m) => !m)} aria-label="Más opciones" className="-mr-2 -mt-2 grid h-11 w-11 place-items-center rounded-full text-slate-400 hover:bg-slate-100">
               <MoreHorizontal size={18} />
             </button>
             <AnimatePresence>
@@ -76,7 +76,7 @@ export function PostCard({ post, currentUserId, profiles, blockedIds, reported, 
                   initial={{ opacity: 0, scale: 0.95, y: -4 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95, y: -4 }}
-                  className="absolute right-0 top-10 z-20 w-48 overflow-hidden rounded-2xl bg-white py-1 shadow-lg ring-1 ring-slate-100"
+                  className="absolute right-0 top-11 z-20 w-56 overflow-hidden rounded-2xl bg-white py-1 shadow-lg ring-1 ring-slate-100"
                 >
                   {isMine ? (
                     <button
@@ -88,16 +88,16 @@ export function PostCard({ post, currentUserId, profiles, blockedIds, reported, 
                         await onDelete(post.id)
                         setDeleting(false)
                       }}
-                      className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-rose-600 hover:bg-rose-50"
+                      className="flex w-full items-center gap-2 px-4 py-3 text-sm text-rose-600 hover:bg-rose-50"
                     >
                       <Trash2 size={16} /> Eliminar publicación
                     </button>
                   ) : (
                     <>
-                      <button onClick={() => { setMenu(false); onReport(post.id) }} className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
+                      <button onClick={() => { setMenu(false); onReport(post.id) }} className="flex w-full items-center gap-2 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50">
                         <Flag size={16} /> Denunciar publicación
                       </button>
-                      <button onClick={() => { setMenu(false); onBlock(post.author_id) }} className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-rose-600 hover:bg-rose-50">
+                      <button onClick={() => { setMenu(false); onBlock(post.author_id) }} className="flex w-full items-center gap-2 px-4 py-3 text-sm text-rose-600 hover:bg-rose-50">
                         <Ban size={16} /> Bloquear a {author.nickname}
                       </button>
                     </>
@@ -150,7 +150,7 @@ export function PostCard({ post, currentUserId, profiles, blockedIds, reported, 
           {top.map(([r]) => <span key={r}>{REACTIONS[r]}</span>)}
           {total > 0 && <span className="ml-1">{total}</span>}
         </span>
-        <button onClick={() => setShowComments((s) => !s)} className="hover:text-slate-700">
+        <button onClick={() => setShowComments((s) => !s)} className="-my-3 py-3 pl-3 hover:text-slate-700">
           {comments.length} comentarios
         </button>
       </div>
@@ -159,17 +159,17 @@ export function PostCard({ post, currentUserId, profiles, blockedIds, reported, 
         <motion.button
           whileTap={{ scale: 0.9 }}
           onClick={() => onReact(post.id, mine ?? 'like')}
-          className={cn('flex flex-1 items-center justify-center gap-1.5 rounded-2xl py-2.5 text-sm font-medium transition-colors', mine ? 'bg-green-50 text-green-700' : 'text-slate-600 hover:bg-slate-50')}
+          className={cn('flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-2xl py-2.5 text-sm font-medium transition-colors', mine ? 'bg-green-50 text-green-700' : 'text-slate-600 hover:bg-slate-50')}
         >
           <span className="text-base leading-none">{REACTIONS[mine ?? 'like']}</span> {mine ? 'Reaccionaste' : 'Me gusta'}
         </motion.button>
-        <motion.button whileTap={{ scale: 0.9 }} onClick={() => setShowPicker((s) => !s)} aria-label="Elegir reacción" className="rounded-2xl px-3 text-slate-500 hover:bg-slate-50">
+        <motion.button whileTap={{ scale: 0.9 }} onClick={() => setShowPicker((s) => !s)} aria-label="Elegir reacción" className="min-h-[44px] min-w-[44px] rounded-2xl px-3 text-slate-500 hover:bg-slate-50">
           <SmilePlus size={18} />
         </motion.button>
         <motion.button
           whileTap={{ scale: 0.9 }}
           onClick={() => setShowComments((s) => !s)}
-          className="flex flex-1 items-center justify-center gap-1.5 rounded-2xl py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
+          className="flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-2xl py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
         >
           <MessageCircle size={17} /> Comentar
         </motion.button>
@@ -187,7 +187,7 @@ export function PostCard({ post, currentUserId, profiles, blockedIds, reported, 
                   whileHover={{ scale: 1.3, y: -3 }}
                   whileTap={{ scale: 0.9 }}
                   onClick={() => { onReact(post.id, r); setShowPicker(false) }}
-                  className={cn('rounded-full p-1 text-xl', mine === r && 'bg-green-50')}
+                  className={cn('grid h-11 w-11 place-items-center rounded-full text-2xl', mine === r && 'bg-green-50')}
                   aria-label={r}
                 >
                   {REACTIONS[r]}
@@ -219,7 +219,7 @@ export function PostCard({ post, currentUserId, profiles, blockedIds, reported, 
                   maxLength={300}
                   className="flex-1 rounded-2xl bg-slate-50 px-4 py-2.5 text-sm outline-none ring-green-600/30 focus:ring-2"
                 />
-                <motion.button whileTap={{ scale: 0.9 }} disabled={!draft.trim() || sending} aria-label="Enviar" className="grid h-10 w-10 place-items-center rounded-2xl bg-green-700 text-white disabled:bg-slate-200">
+                <motion.button whileTap={{ scale: 0.9 }} disabled={!draft.trim() || sending} aria-label="Enviar" className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-green-700 text-white disabled:bg-slate-200">
                   <Send size={16} />
                 </motion.button>
               </form>

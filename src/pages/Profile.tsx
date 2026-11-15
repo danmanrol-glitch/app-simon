@@ -77,7 +77,7 @@ export default function Profile() {
       <PageHeader title="Mi perfil" />
 
       <section className="relative mx-5 flex flex-col items-center rounded-3xl bg-white p-6 text-center shadow-sm">
-        <button onClick={() => setEditing(true)} className="absolute right-4 top-4 flex items-center gap-1.5 rounded-2xl bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-200">
+        <button onClick={() => setEditing(true)} className="absolute right-3 top-3 flex min-h-[44px] items-center gap-1.5 rounded-2xl bg-slate-100 px-4 text-xs font-semibold text-slate-700 hover:bg-slate-200">
           <Pencil size={13} /> Editar
         </button>
         <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="rounded-full bg-gradient-to-br from-green-400 to-emerald-700 p-1">

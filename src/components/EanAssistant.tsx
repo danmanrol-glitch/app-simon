@@ -120,12 +120,12 @@ export function EanAssistant() {
           <h1 className="font-bold text-slate-900">EAN Assistant</h1>
           <p className="flex items-center gap-1 text-xs text-slate-500"><Sparkles size={12} className="text-green-600" /> Asistente con IA · puede cometer errores</p>
         </div>
-        <motion.button whileTap={{ scale: 0.9 }} onClick={reset} aria-label="Nueva conversación" className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700">
+        <motion.button whileTap={{ scale: 0.9 }} onClick={reset} aria-label="Nueva conversación" className="grid h-11 w-11 place-items-center rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-700">
           <RotateCcw size={18} />
         </motion.button>
       </header>
 
-      <div className="no-scrollbar flex-1 space-y-3 overflow-y-auto px-4 py-5" aria-live="polite">
+      <div className="no-scrollbar scroll-area flex-1 space-y-3 overflow-y-auto px-4 py-5" aria-live="polite">
         <AnimatePresence initial={false}>
           {messages.map((m) => (
             <motion.div
@@ -173,7 +173,7 @@ export function EanAssistant() {
                 whileTap={{ scale: 0.95 }}
                 whileHover={{ y: -2 }}
                 onClick={() => send(s)}
-                className="rounded-2xl bg-white px-3.5 py-2 text-left text-sm text-slate-700 shadow-sm ring-1 ring-slate-100 hover:ring-green-200"
+                className="min-h-[44px] rounded-2xl bg-white px-3.5 py-2.5 text-left text-sm text-slate-700 shadow-sm ring-1 ring-slate-100 hover:ring-green-200"
               >
                 {s}
               </motion.button>
@@ -200,7 +200,7 @@ export function EanAssistant() {
           e.preventDefault()
           send(input)
         }}
-        className="flex items-end gap-2 px-4 pb-28 pt-2"
+        className="flex items-end gap-2 px-4 pb-[6.5rem] pt-2 transition-[padding] group-data-[keyboard=open]:pb-3"
       >
         <textarea
           value={input}

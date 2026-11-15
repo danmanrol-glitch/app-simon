@@ -43,9 +43,9 @@ export function EventCalendar({ events }: { events: Activity[] }) {
   return (
     <div>
       <div className="mb-3 flex items-center justify-between">
-        <button onClick={() => shift(-1)} aria-label="Mes anterior" className="rounded-xl p-2 text-slate-500 hover:bg-slate-100"><ChevronLeft size={18} /></button>
+        <button onClick={() => shift(-1)} aria-label="Mes anterior" className="grid h-11 w-11 place-items-center rounded-xl text-slate-500 hover:bg-slate-100"><ChevronLeft size={18} /></button>
         <p className="font-semibold text-slate-900">{MONTHS[month.getMonth()]} {month.getFullYear()}</p>
-        <button onClick={() => shift(1)} aria-label="Mes siguiente" className="rounded-xl p-2 text-slate-500 hover:bg-slate-100"><ChevronRight size={18} /></button>
+        <button onClick={() => shift(1)} aria-label="Mes siguiente" className="grid h-11 w-11 place-items-center rounded-xl text-slate-500 hover:bg-slate-100"><ChevronRight size={18} /></button>
       </div>
       <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-semibold text-slate-400">
         {WEEK.map((d, i) => <span key={i}>{d}</span>)}

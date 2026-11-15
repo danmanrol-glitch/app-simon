@@ -16,7 +16,7 @@ export function Sheet({ open, onClose, title, children }: { open: boolean; onClo
           <motion.div
             role="dialog"
             aria-label={title}
-            className="relative max-h-[85vh] w-full max-w-md overflow-y-auto rounded-t-3xl bg-white px-5 pb-8 pt-3 shadow-xl"
+            className="scroll-area relative max-h-[88dvh] w-full max-w-md overflow-y-auto rounded-t-3xl bg-white px-5 pb-[max(env(safe-area-inset-bottom),2rem)] pt-3 shadow-xl"
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
@@ -25,7 +25,7 @@ export function Sheet({ open, onClose, title, children }: { open: boolean; onClo
             <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-slate-200" />
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-bold text-slate-900">{title}</h2>
-              <button onClick={onClose} aria-label="Cerrar" className="rounded-full p-2 text-slate-500 hover:bg-slate-100">
+              <button onClick={onClose} aria-label="Cerrar" className="-mr-2 grid h-11 w-11 place-items-center rounded-full text-slate-500 hover:bg-slate-100">
                 <X size={18} />
               </button>
             </div>
