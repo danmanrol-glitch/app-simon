@@ -15,8 +15,10 @@ Tiempo estimado: 10 minutos.
 -----------------------
 Copia los valores desde: Project Settings > API (o "Connect" > App Frameworks).
 
-En tu archivo .env (en la raíz del proyecto, junto a package.json) agrega
-exactamente estas líneas:
+Este proyecto ya trae la URL y la publishable key en src/config.ts
+(proyecto iikzjjamjbxbrqleebzc), así que NO necesitas configurarlas.
+Solo si cambias de proyecto, agrega en tu .env (o en Vercel) estas líneas,
+que tienen prioridad sobre src/config.ts:
 
 VITE_SUPABASE_URL=https://TU-PROYECTO.supabase.co
 VITE_SUPABASE_ANON_KEY=tu-anon-key-o-publishable-key

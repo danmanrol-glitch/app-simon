@@ -1,9 +1,10 @@
 import { createClient } from '@supabase/supabase-js'
+import { PUBLIC_SUPABASE_KEY, PUBLIC_SUPABASE_URL } from '../config'
 
 // Estas dos variables son públicas por diseño: la anon/publishable key solo da los permisos que
 // definen las políticas RLS de supabase/schema.sql. Nunca pongas aquí la service_role key.
-const url = import.meta.env.VITE_SUPABASE_URL as string | undefined
-const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
+const url = import.meta.env.VITE_SUPABASE_URL || PUBLIC_SUPABASE_URL
+const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || PUBLIC_SUPABASE_KEY
 
 export const isSupabaseConfigured = Boolean(url && anonKey)
 

@@ -4,6 +4,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { ApiError as GeminiApiError, GoogleGenAI, ThinkingLevel } from '@google/genai'
 import { createClient } from '@supabase/supabase-js'
+import { PUBLIC_SUPABASE_KEY, PUBLIC_SUPABASE_URL } from '../src/config'
 
 export const config = { maxDuration: 60 }
 
@@ -166,8 +167,8 @@ async function* streamAnthropic(messages: IncomingMessage[]): AsyncGenerator<str
 
 // Solo estudiantes con sesión de Supabase pueden usar el asistente (evita que terceros gasten tu cuota de IA).
 async function isAuthenticated(request: Request): Promise<boolean | 'not-configured'> {
-  const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL
-  const anonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY
+  const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || PUBLIC_SUPABASE_URL
+  const anonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || PUBLIC_SUPABASE_KEY
   if (!url || !anonKey) return 'not-configured'
   const token = request.headers.get('authorization')?.replace(/^Bearer\s+/i, '').trim()
   if (!token) return false
