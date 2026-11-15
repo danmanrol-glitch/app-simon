@@ -1,0 +1,176 @@
+EAN CONNECT - CONFIGURACIÓN DE SUPABASE
+=======================================
+
+Tiempo estimado: 10 minutos.
+
+
+1. CREAR EL PROYECTO
+--------------------
+1. Entra a https://supabase.com/dashboard y crea un proyecto nuevo.
+2. Elige una región cercana (por ejemplo, la de São Paulo, sa-east-1) y guarda la
+   contraseña de la base de datos en un lugar seguro.
+
+
+2. VARIABLES DE ENTORNO
+-----------------------
+Copia los valores desde: Project Settings > API (o "Connect" > App Frameworks).
+
+Este proyecto ya trae la URL y la publishable key en src/config.ts
+(proyecto iikzjjamjbxbrqleebzc), así que NO necesitas configurarlas.
+Solo si cambias de proyecto, agrega en tu .env (o en Vercel) estas líneas,
+que tienen prioridad sobre src/config.ts:
+
+VITE_SUPABASE_URL=https://TU-PROYECTO.supabase.co
+VITE_SUPABASE_ANON_KEY=tu-anon-key-o-publishable-key
+
+Las variables del asistente de IA siguen igual:
+
+GEMINI_API_KEY=tu-api-key-de-gemini
+
+Notas:
+- VITE_SUPABASE_ANON_KEY puede ser la "anon public" key (empieza por eyJ...) o la
+  nueva "publishable" key (empieza por sb_publishable_...). Las dos funcionan.
+- Estas dos variables VITE_ son públicas por diseño: la seguridad la dan las
+  políticas RLS del esquema. NUNCA pongas la "service_role" key ni la
+  "secret" key en el .env del frontend ni en una variable que empiece por VITE_.
+- En Vercel agrega las mismas variables en
+  Project > Settings > Environment Variables y vuelve a desplegar.
+  /api/chat las usa para verificar que quien chatea tiene sesión iniciada.
+
+
+3. CREAR LAS TABLAS
+-------------------
+1. En Supabase abre: SQL Editor > New query.
+2. Copia y pega TODO el contenido del archivo supabase/schema.sql.
+3. Presiona "Run". Debe terminar sin errores. Puedes volver a ejecutarlo:
+   no borra datos.
+
+El script crea lo siguiente (todas las tablas en el esquema "public", con
+Row Level Security activado):
+
+profiles
+  id                  uuid  PK, FK -> auth.users.id (se borra con el usuario)
+  full_name           text
+  nickname            text
+  career              text
+  semester            smallint (1 a 12)
+  bio                 text (máx. 300 caracteres)
+  interests           text[]
+  favorite_activities text[]
+  privacy             jsonb  {showCareer, showSemester, showInterests,
+                              showActivities, profileVisibleTo: "todos"|"nadie"}
+  notifications       jsonb  {newActivities, communityReplies, reminders,
+                              wellbeingSurveys}
+  created_at, updated_at  timestamptz
+  -> Se crea sola al registrarse (trigger on_auth_user_created), con nombre,
+     apodo, carrera y semestre del formulario de registro.
+  -> Cada usuario solo puede leer y editar SU propio perfil.
+
+public_profiles  (VISTA, no tabla)
+  id, full_name, nickname, career, semester, interests
+  -> Lo que otros estudiantes ven. Devuelve NULL en carrera, semestre o
+     intereses si el usuario los ocultó en Ajustes de privacidad.
+
+activities
+  id           uuid PK
+  name         text
+  category     text: deportes | arte-cultura | emprendimiento | juegos |
+                     voluntariado | grupos-estudio
+  description  text
+  date         date
+  start_time   time
+  end_time     time
+  location     text
+  total_spots  integer (> 0)
+  organizer    text
+  tags         text[]  (se cruzan con los intereses para recomendar)
+  created_at   timestamptz
+  -> Los estudiantes solo pueden leerlas. Se crean y editan desde
+     Table Editor > activities. El script carga 8 actividades de ejemplo
+     solo si la tabla está vacía.
+
+enrollments  (inscripciones)
+  activity_id  uuid FK -> activities.id
+  user_id      uuid FK -> profiles.id
+  created_at   timestamptz
+  PK (activity_id, user_id)
+  -> Un trigger rechaza la inscripción si la actividad ya no tiene cupos
+     (error ACTIVITY_FULL), incluso si dos personas se inscriben a la vez.
+  -> Cada usuario solo puede inscribirse o cancelar a nombre propio.
+
+posts
+  id          uuid PK
+  author_id   uuid FK -> profiles.id
+  type        text: plan | busco-companeros | general
+  category    text: deportes | academico | recreativo
+  text        text (1 a 400 caracteres)
+  plan_when   text, plan_where text, plan_spots integer (opcionales)
+  created_at  timestamptz
+
+comments
+  id, post_id (FK posts), author_id (FK profiles), text (1 a 300), created_at
+
+post_reactions
+  post_id, user_id, reaction (like | love | fun | support), created_at
+  PK (post_id, user_id): una reacción por persona y publicación.
+
+post_reports  (denuncias)
+  id, post_id, reporter_id, reason, created_at
+  -> Cada usuario solo ve sus propias denuncias. Revísalas en
+     Table Editor > post_reports.
+
+user_blocks  (bloqueos)
+  blocker_id, blocked_id, created_at
+  -> Privados de cada usuario. La app oculta las publicaciones y comentarios
+     de las personas bloqueadas.
+
+
+4. AUTENTICACIÓN
+----------------
+En Authentication > Sign In / Providers:
+- Deja activado "Email".
+- "Confirm email" viene activado: el estudiante recibe un correo y debe
+  confirmarlo antes de entrar. Para pruebas rápidas puedes desactivarlo.
+
+En Authentication > URL Configuration:
+- Site URL: la URL de producción de Vercel (por ejemplo,
+  https://app-simon.vercel.app).
+- Redirect URLs: agrega también http://localhost:5173 y la URL de vista
+  previa de Vercel para que el enlace de confirmación funcione en cada
+  entorno.
+
+Importante: el servidor de correo incluido en Supabase está pensado para
+pruebas y tiene un límite bajo de envíos por hora. Para usarlo con muchos
+estudiantes configura un SMTP propio en
+Authentication > Emails > SMTP Settings.
+
+
+5. PROBAR
+---------
+1. npm install
+2. npm run dev
+3. Abre http://localhost:5173, crea una cuenta, confirma el correo e inicia
+   sesión.
+4. Verifica en Table Editor que aparecen filas en profiles, enrollments y
+   posts al usar la app.
+
+
+6. OPCIONAL: SOLO CORREOS INSTITUCIONALES
+-----------------------------------------
+Si quieres que solo se registren correos de la universidad, ejecuta esto en
+el SQL Editor (cambia el dominio por el dominio real de los correos de
+estudiantes de la EAN):
+
+create or replace function public.only_institutional_email()
+returns trigger language plpgsql as $$
+begin
+  if new.email not ilike '%@DOMINIO-EAN-AQUI' then
+    raise exception 'Usa tu correo institucional de la EAN';
+  end if;
+  return new;
+end;
+$$;
+
+create trigger only_institutional_email
+  before insert on auth.users
+  for each row execute function public.only_institutional_email();
