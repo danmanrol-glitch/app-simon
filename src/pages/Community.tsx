@@ -45,7 +45,7 @@ export default function Community() {
           <Chip key={k} active={filter === k} onClick={() => setFilter(k)}>{POST_CATEGORIES[k]}</Chip>
         ))}
       </div>
-      <div className="space-y-4 px-5 pt-2">
+      <div className="mx-auto max-w-2xl space-y-4 px-5 pt-2">
         {loading ? (
           <LoadingCards height="h-48" />
         ) : error ? (

@@ -66,7 +66,7 @@ export function InstallBanner() {
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -8 }}
-          className="mx-5 flex items-center gap-3 rounded-3xl bg-white p-4 shadow-sm ring-1 ring-green-100"
+          className="mx-5 flex items-center gap-3 rounded-3xl bg-white p-4 shadow-sm ring-1 ring-green-100 lg:hidden"
         >
           <img src="/icon-192.png" alt="" className="h-11 w-11 rounded-2xl" />
           <div className="min-w-0 flex-1">

@@ -76,7 +76,7 @@ export default defineConfig(({ mode }) => {
           name: 'EAN Connect',
           short_name: 'EAN Connect',
           description: 'La comunidad de estudiantes de la Universidad EAN',
-          theme_color: '#15803d',
+          theme_color: '#f8fafc',
           background_color: '#f8fafc',
           display: 'standalone',
           orientation: 'portrait',

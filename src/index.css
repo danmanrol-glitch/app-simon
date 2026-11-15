@@ -3,7 +3,9 @@
 @tailwind utilities;
 
 html, body, #root { height: 100%; }
-body { @apply bg-slate-200 text-slate-800 antialiased; -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+html { background: #f8fafc; }
+html, body { overscroll-behavior: none; }
+body { @apply bg-slate-50 text-slate-800 antialiased; -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 button, a, [role='button'] { touch-action: manipulation; }
 
 /* iOS hace zoom al enfocar un campo con letra menor a 16 px: en teléfonos se fuerza 16 px. */

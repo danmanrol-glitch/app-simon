@@ -17,7 +17,7 @@ import { cn, todayISO } from '../lib/utils'
 
 function Section({ title, icon, hidden, action, children }: { title: string; icon?: React.ReactNode; hidden?: boolean; action?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <section className="mx-5 rounded-3xl bg-white p-5 shadow-sm">
+    <section className="mx-5 rounded-3xl bg-white p-5 shadow-sm lg:mx-0">
       <div className="mb-3 flex items-center justify-between">
         <h2 className="flex items-center gap-2 font-bold text-slate-900">{icon}{title}</h2>
         <div className="flex items-center gap-2">
@@ -100,6 +100,8 @@ export default function Profile() {
         </div>
       </section>
 
+      <div className="space-y-5 lg:grid lg:grid-cols-2 lg:items-start lg:gap-5 lg:space-y-0 lg:px-5">
+        <div className="space-y-5">
       <Section title="Intereses" hidden={!p.showInterests}>
         {profile.interests.length ? (
           <div className="flex flex-wrap gap-2">
@@ -126,6 +128,8 @@ export default function Profile() {
         <EventCalendar events={enrolled} />
       </Section>
 
+        </div>
+        <div className="space-y-5">
       <Section title="Privacidad" icon={<Shield size={18} className="text-green-700" />}>
         <p className="mb-2 text-xs text-slate-500">Quién puede ver mis datos en la Comunidad</p>
         <div className="mb-2 grid grid-cols-2 gap-2 rounded-2xl bg-slate-100 p-1">
@@ -156,9 +160,12 @@ export default function Profile() {
         </div>
       </Section>
 
-      <button onClick={() => void signOut()} className="mx-5 flex w-[calc(100%-2.5rem)] items-center justify-center gap-2 rounded-3xl bg-white py-4 text-sm font-semibold text-rose-600 shadow-sm hover:bg-rose-50">
+      <button onClick={() => void signOut()} className="mx-5 flex w-[calc(100%-2.5rem)] items-center lg:mx-0 lg:w-full justify-center gap-2 rounded-3xl bg-white py-4 text-sm font-semibold text-rose-600 shadow-sm hover:bg-rose-50">
         <LogOut size={17} /> Cerrar sesión
       </button>
+
+        </div>
+      </div>
 
       <EditProfileSheet open={editing} onClose={() => setEditing(false)} profile={profile} onSave={updateProfile} />
     </div>
