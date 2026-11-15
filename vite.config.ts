@@ -57,7 +57,7 @@ export default defineConfig(({ mode }) => {
         registerType: 'autoUpdate',
         injectRegister: false,
         includeAssets: ['icon-192.png', 'apple-touch-icon.png', 'ean-logo.png'],
-        workbox: { navigateFallbackDenylist: [/^\/api\//], cleanupOutdatedCaches: true, clientsClaim: true, skipWaiting: true },
+        workbox: { navigateFallbackDenylist: [/^\/api\//], cleanupOutdatedCaches: true, clientsClaim: true, skipWaiting: true, importScripts: ['sw-reload.js'] },
         manifest: {
           name: 'EAN Connect',
           short_name: 'EAN Connect',
