@@ -30,4 +30,6 @@ El chat vive en `src/components/EanAssistant.tsx` y llama a `POST /api/chat` (`a
 2. `npm run dev`: Vite sirve `/api/chat` con la misma función que corre en Vercel.
 3. En Vercel, agrega `GEMINI_API_KEY` en Settings > Environment Variables y vuelve a desplegar.
 
+`/api/publish` revisa con IA (Gemini) cada post, comentario y foto antes de guardarlo con la secret key del servidor; los estudiantes no pueden insertar directamente en esas tablas.
+
 `/api/chat` exige la sesión de Supabase del estudiante (header `Authorization: Bearer <access_token>`), así que nadie sin cuenta puede gastar tu cuota de IA.

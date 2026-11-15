@@ -220,3 +220,30 @@ a tu propio email, así que no sirve para los estudiantes.
   4. Authentication > Rate Limits: sube "emails per hour" (ej. 100).
   5. Authentication > Sign In / Providers > Email: activa "Confirm email".
   6. Prueba creando una cuenta nueva: el correo debe llegar desde tu dominio.
+
+
+9. MODERACIÓN CON IA (migración 003)
+------------------------------------
+Las publicaciones, comentarios y fotos de la Comunidad pasan por Gemini antes
+de guardarse (función /api/publish en Vercel):
+  - "block":  no se publica; el estudiante ve por qué y puede corregirlo.
+  - "review": se publica, pero queda marcado para que lo revises.
+  - "allow":  se publica normal.
+Si Gemini no responde, el contenido se publica marcado como "review".
+
+Pasos:
+  1. Ejecuta supabase/migrations/003_moderacion_ia.sql en el SQL Editor
+     (después de la 002). Desde ese momento la app ya no puede insertar posts
+     ni comentarios directamente: solo /api/publish.
+  2. Crea una secret key NUEVA: Project Settings > API Keys > Secret keys >
+     New secret key. (Revoca la que quedó expuesta en el chat.)
+  3. En Vercel > Settings > Environment Variables agrega:
+       SUPABASE_SECRET_KEY = sb_secret_...   (Production y Preview)
+     y verifica que GEMINI_API_KEY también esté. Luego Redeploy.
+     Sin SUPABASE_SECRET_KEY no se puede publicar en la Comunidad.
+
+Revisar lo marcado: en el SQL Editor ejecuta
+     select * from public.moderation_queue;
+  Para aprobarlo:  update posts set moderation_status = 'approved' where id = '...';
+  Para borrarlo:   delete from posts where id = '...';
+  (igual con la tabla comments).

@@ -3,15 +3,17 @@ import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 import { Readable } from 'node:stream'
 
-// En desarrollo, sirve /api/chat con la misma función que usa Vercel en producción.
+// En desarrollo, sirve /api/chat y /api/publish con las mismas funciones que usa Vercel en producción.
 function devApi(): Plugin {
   return {
     name: 'ean-dev-api',
     apply: 'serve',
     configureServer(server: ViteDevServer) {
-      server.middlewares.use('/api/chat', async (req, res) => {
+      server.middlewares.use('/api', async (req, res, next) => {
+        const name = (req.url ?? '').split('?')[0].replace(/^\//, '')
+        if (!['chat', 'publish'].includes(name)) return next()
         try {
-          const mod = (await server.ssrLoadModule('/api/chat.ts')) as { POST?: (r: Request) => Promise<Response> }
+          const mod = (await server.ssrLoadModule(`/api/${name}.ts`)) as { POST?: (r: Request) => Promise<Response> }
           if (req.method !== 'POST' || !mod.POST) {
             res.statusCode = 405
             res.end('Method Not Allowed')
@@ -19,7 +21,7 @@ function devApi(): Plugin {
           }
           const chunks: Buffer[] = []
           for await (const chunk of req) chunks.push(chunk as Buffer)
-          const request = new Request(`http://localhost${req.originalUrl ?? '/api/chat'}`, {
+          const request = new Request(`http://localhost${req.originalUrl ?? '/api/' + name}`, {
             method: 'POST',
             headers: {
               'Content-Type': req.headers['content-type'] ?? 'application/json',
@@ -45,7 +47,7 @@ function devApi(): Plugin {
 export default defineConfig(({ mode }) => {
   // Carga .env sin prefijo solo en el proceso de Node (servidor). Nada de esto se inyecta en el bundle del cliente.
   const env = loadEnv(mode, process.cwd(), '')
-  for (const key of ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY', 'AI_PROVIDER', 'GEMINI_API_KEY', 'GEMINI_MODEL', 'GEMINI_FALLBACK_MODELS', 'ANTHROPIC_API_KEY', 'ANTHROPIC_MODEL']) {
+  for (const key of ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY', 'SUPABASE_SECRET_KEY', 'GEMINI_MODERATION_MODEL', 'AI_PROVIDER', 'GEMINI_API_KEY', 'GEMINI_MODEL', 'GEMINI_FALLBACK_MODELS', 'ANTHROPIC_API_KEY', 'ANTHROPIC_MODEL']) {
     if (env[key] && !process.env[key]) process.env[key] = env[key]
   }
 

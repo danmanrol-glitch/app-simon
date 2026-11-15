@@ -231,9 +231,8 @@ alter table public.user_blocks    enable row level security;
 drop policy if exists "posts: leer" on public.posts;
 create policy "posts: leer" on public.posts
   for select to authenticated using (true);
+-- Los posts se crean solo desde /api/publish (moderación con IA + secret key). Ver migración 003.
 drop policy if exists "posts: publicar" on public.posts;
-create policy "posts: publicar" on public.posts
-  for insert to authenticated with check ((select auth.uid()) = author_id);
 drop policy if exists "posts: borrar los míos" on public.posts;
 create policy "posts: borrar los míos" on public.posts
   for delete to authenticated using ((select auth.uid()) = author_id);
@@ -242,9 +241,8 @@ create policy "posts: borrar los míos" on public.posts
 drop policy if exists "comments: leer" on public.comments;
 create policy "comments: leer" on public.comments
   for select to authenticated using (true);
+-- Los comentarios se crean solo desde /api/publish (moderación con IA + secret key). Ver migración 003.
 drop policy if exists "comments: comentar" on public.comments;
-create policy "comments: comentar" on public.comments
-  for insert to authenticated with check ((select auth.uid()) = author_id);
 drop policy if exists "comments: borrar los míos" on public.comments;
 create policy "comments: borrar los míos" on public.comments
   for delete to authenticated using ((select auth.uid()) = author_id);
@@ -322,3 +320,36 @@ create policy "post-images: borrar las mías" on storage.objects
 alter table public.posts drop constraint if exists posts_image_path_owner;
 alter table public.posts add constraint posts_image_path_owner
   check (image_path is null or split_part(image_path, '/', 1) = author_id::text);
+
+-- ─────────────────────────── Moderación con IA ───────────────────────────
+-- (también en supabase/migrations/003_moderacion_ia.sql para proyectos ya creados)
+alter table public.posts    add column if not exists moderation_status text not null default 'approved';
+alter table public.posts    add column if not exists moderation_categories text[] not null default '{}';
+alter table public.comments add column if not exists moderation_status text not null default 'approved';
+alter table public.comments add column if not exists moderation_categories text[] not null default '{}';
+
+alter table public.posts    drop constraint if exists posts_moderation_status_check;
+alter table public.posts    add constraint posts_moderation_status_check check (moderation_status in ('approved', 'review'));
+alter table public.comments drop constraint if exists comments_moderation_status_check;
+alter table public.comments add constraint comments_moderation_status_check check (moderation_status in ('approved', 'review'));
+
+create index if not exists posts_review_idx    on public.posts (created_at desc)    where moderation_status = 'review';
+create index if not exists comments_review_idx on public.comments (created_at desc) where moderation_status = 'review';
+
+-- 2. Los estudiantes ya no insertan posts ni comentarios directamente: solo la función
+--    /api/publish (Vercel), que usa la secret key después de revisar el contenido con IA.
+--    Borrar lo propio, reaccionar, denunciar y bloquear siguen funcionando igual.
+drop policy if exists "posts: publicar" on public.posts;
+drop policy if exists "comments: comentar" on public.comments;
+
+-- 3. Vista para administradores: lo publicado que la IA marcó para revisión.
+--    Consúltala en SQL Editor:  select * from public.moderation_queue;
+create or replace view public.moderation_queue as
+select 'post' as kind, p.id, p.author_id, p.text, p.image_path, p.moderation_categories, p.created_at
+from public.posts p where p.moderation_status = 'review'
+union all
+select 'comment', c.id, c.author_id, c.text, null, c.moderation_categories, c.created_at
+from public.comments c where c.moderation_status = 'review'
+order by created_at desc;
+
+revoke all on public.moderation_queue from anon, authenticated, public;

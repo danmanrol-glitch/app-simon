@@ -5,6 +5,23 @@ import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import type { Comment, Post, PostCategory, PostType, ReactionType } from '../types'
 
+/** Publica a través de /api/publish, que revisa el contenido con IA antes de guardarlo. */
+async function publish<T>(payload: Record<string, unknown>): Promise<{ data?: T; error?: string; blocked?: boolean }> {
+  const { data: auth } = await supabase.auth.getSession()
+  try {
+    const res = await fetch('/api/publish', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${auth.session?.access_token ?? ''}` },
+      body: JSON.stringify(payload),
+    })
+    const body = await res.json().catch(() => null)
+    if (!res.ok) return { error: body?.error ?? `Error del servidor (${res.status}).`, blocked: Boolean(body?.blocked) }
+    return { data: body as T }
+  } catch {
+    return { error: 'No hay conexión. Revisa tu internet e intenta de nuevo.' }
+  }
+}
+
 const EMPTY_REACTIONS: Record<ReactionType, number> = { like: 0, love: 0, fun: 0, support: 0 }
 
 type PostRow = Omit<Post, 'comments' | 'reactions' | 'my_reaction'> & {
@@ -88,24 +105,22 @@ export function useCommunity() {
       }
     }
 
-    const { data, error } = await supabase
-      .from('posts')
-      .insert({
-        author_id: userId,
-        type,
-        category,
-        text,
-        plan_when: type === 'plan' && planWhen ? planWhen : null,
-        plan_where: type === 'plan' && planWhere ? planWhere : null,
-        image_path: imagePath,
-      })
-      .select('id, author_id, type, category, text, plan_when, plan_where, plan_spots, image_path, created_at')
-      .single()
-    if (error) {
-      if (imagePath) void supabase.storage.from(POST_IMAGES_BUCKET).remove([imagePath])
-      showToast('No se pudo publicar. Intenta de nuevo.')
+    const result = await publish<{ post: Omit<Post, 'comments' | 'reactions' | 'my_reaction'> }>({
+      kind: 'post',
+      type,
+      category,
+      text,
+      plan_when: type === 'plan' && planWhen ? planWhen : null,
+      plan_where: type === 'plan' && planWhere ? planWhere : null,
+      image_path: imagePath,
+    })
+    if (!result.data) {
+      // Si el servidor bloqueó la publicación ya borró la foto; si falló por otra razón, la borramos aquí.
+      if (imagePath && !result.blocked) void supabase.storage.from(POST_IMAGES_BUCKET).remove([imagePath])
+      showToast(result.blocked ? `🚫 ${result.error}` : result.error ?? 'No se pudo publicar.')
       return false
     }
+    const data = result.data.post
     setPosts((prev) => [{ ...(data as Omit<Post, 'comments' | 'reactions' | 'my_reaction'>), comments: [], reactions: { ...EMPTY_REACTIONS }, my_reaction: null }, ...prev])
     showToast('Publicación creada')
     return true
@@ -155,16 +170,13 @@ export function useCommunity() {
 
   const addComment = async (postId: string, text: string) => {
     if (!userId) return false
-    const { data, error } = await supabase
-      .from('comments')
-      .insert({ post_id: postId, author_id: userId, text })
-      .select('id, post_id, author_id, text, created_at')
-      .single()
-    if (error) {
-      showToast('No se pudo enviar el comentario.')
+    const result = await publish<{ comment: Comment }>({ kind: 'comment', post_id: postId, text })
+    if (!result.data) {
+      showToast(result.blocked ? `🚫 ${result.error}` : result.error ?? 'No se pudo enviar el comentario.')
       return false
     }
-    setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, comments: [...p.comments, data as Comment] } : p)))
+    const comment = result.data.comment
+    setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, comments: [...p.comments, comment] } : p)))
     return true
   }
 
