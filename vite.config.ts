@@ -55,8 +55,9 @@ export default defineConfig(({ mode }) => {
       devApi(),
       VitePWA({
         registerType: 'autoUpdate',
+        injectRegister: false,
         includeAssets: ['icon.svg'],
-        workbox: { navigateFallbackDenylist: [/^\/api\//] },
+        workbox: { navigateFallbackDenylist: [/^\/api\//], cleanupOutdatedCaches: true, clientsClaim: true, skipWaiting: true },
         manifest: {
           name: 'EAN Connect',
           short_name: 'EAN Connect',
