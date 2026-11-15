@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Plus } from 'lucide-react'
+import { ImagePlus, Plus, X } from 'lucide-react'
 import { POST_CATEGORIES, POST_TYPES } from '../data/catalog'
 import type { PostCategory, PostType } from '../types'
 import { useAuth } from '../context/AuthContext'
@@ -15,7 +15,7 @@ import { cn } from '../lib/utils'
 
 export default function Community() {
   const { session } = useAuth()
-  const { posts, blockedIds, reportedIds, loading, error, reload, addPost, react, addComment, reportPost, blockAuthor } = useCommunity()
+  const { posts, blockedIds, reportedIds, loading, error, reload, addPost, deletePost, react, addComment, reportPost, blockAuthor } = useCommunity()
   const [filter, setFilter] = useState<PostCategory | 'todos'>('todos')
   const [composer, setComposer] = useState(false)
   const profiles = useProfiles(posts.flatMap((p) => [p.author_id, ...p.comments.map((c) => c.author_id)]))
@@ -64,6 +64,7 @@ export default function Community() {
                 onComment={addComment}
                 onReport={reportPost}
                 onBlock={blockAuthor}
+                onDelete={deletePost}
               />
             ))}
           </AnimatePresence>
@@ -88,15 +89,25 @@ function Composer({ open, onClose, onSubmit }: { open: boolean; onClose: () => v
   const [text, setText] = useState('')
   const [when, setWhen] = useState('')
   const [where, setWhere] = useState('')
+  const [image, setImage] = useState<File | null>(null)
+  const [preview, setPreview] = useState<string | null>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (!image) return setPreview(null)
+    const url = URL.createObjectURL(image)
+    setPreview(url)
+    return () => URL.revokeObjectURL(url)
+  }, [image])
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!text.trim() || sending) return
     setSending(true)
-    const ok = await onSubmit({ type, category: filter, text: text.trim(), planWhen: when.trim(), planWhere: where.trim() })
+    const ok = await onSubmit({ type, category: filter, text: text.trim(), planWhen: when.trim(), planWhere: where.trim(), image })
     setSending(false)
     if (!ok) return
-    setText(''); setWhen(''); setWhere('')
+    setText(''); setWhen(''); setWhere(''); setImage(null)
     onClose()
   }
 
@@ -141,6 +152,28 @@ function Composer({ open, onClose, onSubmit }: { open: boolean; onClose: () => v
             <input value={when} maxLength={80} onChange={(e) => setWhen(e.target.value)} placeholder="¿Cuándo?" className={input} />
             <input value={where} maxLength={80} onChange={(e) => setWhere(e.target.value)} placeholder="¿Dónde?" className={input} />
           </div>
+        )}
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+          className="hidden"
+          onChange={(e) => {
+            setImage(e.target.files?.[0] ?? null)
+            e.target.value = ''
+          }}
+        />
+        {preview ? (
+          <div className="relative overflow-hidden rounded-2xl bg-slate-100">
+            <img src={preview} alt="Vista previa de la foto" className="max-h-60 w-full object-cover" />
+            <button type="button" onClick={() => setImage(null)} aria-label="Quitar foto" className="absolute right-2 top-2 grid h-8 w-8 place-items-center rounded-full bg-slate-900/70 text-white hover:bg-slate-900">
+              <X size={16} />
+            </button>
+          </div>
+        ) : (
+          <button type="button" onClick={() => fileRef.current?.click()} className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-200 py-3 text-sm font-medium text-slate-500 hover:border-green-300 hover:text-green-700">
+            <ImagePlus size={18} /> Agregar foto (opcional)
+          </button>
         )}
         <p className="text-xs text-slate-400">Recuerda: respeto ante todo. Las publicaciones ofensivas pueden ser denunciadas.</p>
         <motion.button whileTap={{ scale: 0.97 }} disabled={!text.trim() || sending} className="w-full rounded-2xl bg-green-700 py-3.5 font-semibold text-white shadow-sm hover:bg-green-800 disabled:bg-slate-200 disabled:text-slate-400">

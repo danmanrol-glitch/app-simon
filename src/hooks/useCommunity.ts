@@ -1,8 +1,26 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { compressImage, POST_IMAGES_BUCKET } from '../lib/image'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import type { Comment, Post, PostCategory, PostType, ReactionType } from '../types'
+
+/** Publica a través de /api/publish, que revisa el contenido con IA antes de guardarlo. */
+async function publish<T>(payload: Record<string, unknown>): Promise<{ data?: T; error?: string; blocked?: boolean }> {
+  const { data: auth } = await supabase.auth.getSession()
+  try {
+    const res = await fetch('/api/publish', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${auth.session?.access_token ?? ''}` },
+      body: JSON.stringify(payload),
+    })
+    const body = await res.json().catch(() => null)
+    if (!res.ok) return { error: body?.error ?? `Error del servidor (${res.status}).`, blocked: Boolean(body?.blocked) }
+    return { data: body as T }
+  } catch {
+    return { error: 'No hay conexión. Revisa tu internet e intenta de nuevo.' }
+  }
+}
 
 const EMPTY_REACTIONS: Record<ReactionType, number> = { like: 0, love: 0, fun: 0, support: 0 }
 
@@ -17,6 +35,7 @@ export interface NewPostInput {
   text: string
   planWhen?: string
   planWhere?: string
+  image?: File | null
 }
 
 export function useCommunity() {
@@ -35,7 +54,7 @@ export function useCommunity() {
     const [postsRes, blocksRes, reportsRes] = await Promise.all([
       supabase
         .from('posts')
-        .select('id, author_id, type, category, text, plan_when, plan_where, plan_spots, created_at, comments(id, post_id, author_id, text, created_at), post_reactions(user_id, reaction)')
+        .select('id, author_id, type, category, text, plan_when, plan_where, plan_spots, image_path, created_at, comments(id, post_id, author_id, text, created_at), post_reactions(user_id, reaction)')
         .order('created_at', { ascending: false })
         .order('created_at', { referencedTable: 'comments', ascending: true })
         .limit(50),
@@ -64,27 +83,61 @@ export function useCommunity() {
     void load()
   }, [load])
 
-  const addPost = async ({ type, category, text, planWhen, planWhere }: NewPostInput) => {
+  const addPost = async ({ type, category, text, planWhen, planWhere, image }: NewPostInput) => {
     if (!userId) return false
-    const { data, error } = await supabase
-      .from('posts')
-      .insert({
-        author_id: userId,
-        type,
-        category,
-        text,
-        plan_when: type === 'plan' && planWhen ? planWhen : null,
-        plan_where: type === 'plan' && planWhere ? planWhere : null,
-      })
-      .select('id, author_id, type, category, text, plan_when, plan_where, plan_spots, created_at')
-      .single()
-    if (error) {
-      showToast('No se pudo publicar. Intenta de nuevo.')
+
+    let imagePath: string | null = null
+    if (image) {
+      try {
+        const blob = await compressImage(image)
+        imagePath = `${userId}/${crypto.randomUUID()}.jpg`
+        const { error: uploadError } = await supabase.storage
+          .from(POST_IMAGES_BUCKET)
+          .upload(imagePath, blob, { contentType: 'image/jpeg', cacheControl: '31536000', upsert: false })
+        if (uploadError) {
+          console.error(uploadError)
+          showToast('No se pudo subir la foto. Intenta de nuevo.')
+          return false
+        }
+      } catch (err) {
+        showToast(err instanceof Error ? err.message : 'No se pudo procesar la foto.')
+        return false
+      }
+    }
+
+    const result = await publish<{ post: Omit<Post, 'comments' | 'reactions' | 'my_reaction'> }>({
+      kind: 'post',
+      type,
+      category,
+      text,
+      plan_when: type === 'plan' && planWhen ? planWhen : null,
+      plan_where: type === 'plan' && planWhere ? planWhere : null,
+      image_path: imagePath,
+    })
+    if (!result.data) {
+      // Si el servidor bloqueó la publicación ya borró la foto; si falló por otra razón, la borramos aquí.
+      if (imagePath && !result.blocked) void supabase.storage.from(POST_IMAGES_BUCKET).remove([imagePath])
+      showToast(result.blocked ? `🚫 ${result.error}` : result.error ?? 'No se pudo publicar.')
       return false
     }
+    const data = result.data.post
     setPosts((prev) => [{ ...(data as Omit<Post, 'comments' | 'reactions' | 'my_reaction'>), comments: [], reactions: { ...EMPTY_REACTIONS }, my_reaction: null }, ...prev])
     showToast('Publicación creada')
     return true
+  }
+
+  const deletePost = async (postId: string) => {
+    if (!userId) return
+    const post = posts.find((p) => p.id === postId)
+    if (!post || post.author_id !== userId) return
+    const { data, error } = await supabase.from('posts').delete().eq('id', postId).select('id')
+    if (error || !data?.length) {
+      showToast('No se pudo eliminar la publicación.')
+      return
+    }
+    if (post.image_path) void supabase.storage.from(POST_IMAGES_BUCKET).remove([post.image_path])
+    setPosts((prev) => prev.filter((p) => p.id !== postId))
+    showToast('Publicación eliminada')
   }
 
   const react = async (postId: string, reaction: ReactionType) => {
@@ -117,16 +170,13 @@ export function useCommunity() {
 
   const addComment = async (postId: string, text: string) => {
     if (!userId) return false
-    const { data, error } = await supabase
-      .from('comments')
-      .insert({ post_id: postId, author_id: userId, text })
-      .select('id, post_id, author_id, text, created_at')
-      .single()
-    if (error) {
-      showToast('No se pudo enviar el comentario.')
+    const result = await publish<{ comment: Comment }>({ kind: 'comment', post_id: postId, text })
+    if (!result.data) {
+      showToast(result.blocked ? `🚫 ${result.error}` : result.error ?? 'No se pudo enviar el comentario.')
       return false
     }
-    setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, comments: [...p.comments, data as Comment] } : p)))
+    const comment = result.data.comment
+    setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, comments: [...p.comments, comment] } : p)))
     return true
   }
 
@@ -152,5 +202,5 @@ export function useCommunity() {
     showToast('Usuario bloqueado. Ya no verás sus publicaciones.')
   }
 
-  return { posts, blockedIds, reportedIds, loading, error, reload: load, addPost, react, addComment, reportPost, blockAuthor }
+  return { posts, blockedIds, reportedIds, loading, error, reload: load, addPost, deletePost, react, addComment, reportPost, blockAuthor }
 }

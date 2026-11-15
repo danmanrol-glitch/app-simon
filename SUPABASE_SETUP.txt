@@ -174,3 +174,76 @@ $$;
 create trigger only_institutional_email
   before insert on auth.users
   for each row execute function public.only_institutional_email();
+
+
+7. FOTOS EN PUBLICACIONES Y BORRAR POSTS (migración 002)
+--------------------------------------------------------
+Si ya ejecutaste schema.sql antes de esta versión, ejecuta también:
+  supabase/migrations/002_fotos_y_borrar_posts.sql
+(SQL Editor > New query > pegar > Run). Crea:
+- la columna posts.image_path,
+- el bucket público "post-images" en Storage (máx. 5 MB, JPG/PNG/WebP),
+- políticas: cada estudiante solo sube y borra fotos en su propia carpeta.
+Las fotos se comprimen en el celular antes de subirse (máx. 1600 px, JPEG).
+Nota: el bucket es público; quien tenga el enlace de una foto puede verla.
+
+
+8. CORREOS CON RESEND (SMTP propio)
+-----------------------------------
+El correo incluido en Supabase permite muy pocos envíos por hora y solo
+sirve para pruebas. Con Resend (plan gratuito) los estudiantes reciben el
+correo de confirmación sin ese límite.
+
+Requisito: un dominio propio (ej. eanconnect.com, ~10 USD/año en Porkbun,
+Namecheap o Cloudflare). Sin dominio verificado, Resend solo envía correos
+a tu propio email, así que no sirve para los estudiantes.
+
+8.1 Resend
+  1. Crea la cuenta en https://resend.com
+  2. Domains > Add Domain > escribe tu dominio (ej. eanconnect.com).
+  3. Resend te muestra registros DNS (MX, TXT/SPF y DKIM). Cópialos en el
+     panel DNS de donde compraste el dominio.
+  4. Vuelve a Resend y presiona Verify. Puede tardar de minutos a horas.
+  5. API Keys > Create API Key > permiso "Sending access" > copia la key
+     (empieza por re_). No la pegues en ningún chat ni en el repo.
+
+8.2 Supabase
+  1. Authentication > Emails > SMTP Settings > Enable Custom SMTP.
+  2. Llena:
+       Sender email:  no-reply@TU-DOMINIO   (debe ser del dominio verificado)
+       Sender name:   EAN Connect
+       Host:          smtp.resend.com
+       Port:          465
+       Username:      resend
+       Password:      la API key de Resend (re_...)
+  3. Guarda.
+  4. Authentication > Rate Limits: sube "emails per hour" (ej. 100).
+  5. Authentication > Sign In / Providers > Email: activa "Confirm email".
+  6. Prueba creando una cuenta nueva: el correo debe llegar desde tu dominio.
+
+
+9. MODERACIÓN CON IA (migración 003)
+------------------------------------
+Las publicaciones, comentarios y fotos de la Comunidad pasan por Gemini antes
+de guardarse (función /api/publish en Vercel):
+  - "block":  no se publica; el estudiante ve por qué y puede corregirlo.
+  - "review": se publica, pero queda marcado para que lo revises.
+  - "allow":  se publica normal.
+Si Gemini no responde, el contenido se publica marcado como "review".
+
+Pasos:
+  1. Ejecuta supabase/migrations/003_moderacion_ia.sql en el SQL Editor
+     (después de la 002). Desde ese momento la app ya no puede insertar posts
+     ni comentarios directamente: solo /api/publish.
+  2. Crea una secret key NUEVA: Project Settings > API Keys > Secret keys >
+     New secret key. (Revoca la que quedó expuesta en el chat.)
+  3. En Vercel > Settings > Environment Variables agrega:
+       SUPABASE_SECRET_KEY = sb_secret_...   (Production y Preview)
+     y verifica que GEMINI_API_KEY también esté. Luego Redeploy.
+     Sin SUPABASE_SECRET_KEY no se puede publicar en la Comunidad.
+
+Revisar lo marcado: en el SQL Editor ejecuta
+     select * from public.moderation_queue;
+  Para aprobarlo:  update posts set moderation_status = 'approved' where id = '...';
+  Para borrarlo:   delete from posts where id = '...';
+  (igual con la tabla comments).

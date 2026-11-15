@@ -13,7 +13,7 @@ export function Toast() {
             initial={{ opacity: 0, y: -16, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -16, scale: 0.96 }}
-            className="rounded-2xl bg-slate-900 px-4 py-3 text-sm font-medium text-white shadow-lg"
+            className="max-w-sm rounded-2xl bg-slate-900 px-4 py-3 text-center text-sm font-medium text-white shadow-lg"
           >
             {toast}
           </motion.div>

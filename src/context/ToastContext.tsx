@@ -11,7 +11,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const [toast, setToast] = useState<string | null>(null)
   const showToast = useCallback((msg: string) => {
     setToast(msg)
-    window.setTimeout(() => setToast((t) => (t === msg ? null : t)), 2600)
+    window.setTimeout(() => setToast((t) => (t === msg ? null : t)), msg.length > 60 ? 5000 : 2600)
   }, [])
   return <ToastContext.Provider value={{ toast, showToast }}>{children}</ToastContext.Provider>
 }
