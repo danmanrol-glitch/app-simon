@@ -77,6 +77,7 @@ export interface Post {
   plan_when: string | null
   plan_where: string | null
   plan_spots: number | null
+  image_path: string | null
   created_at: string
   comments: Comment[]
   reactions: Record<ReactionType, number>

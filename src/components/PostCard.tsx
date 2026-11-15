@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Ban, CalendarDays, Flag, MapPin, MessageCircle, MoreHorizontal, Send, SmilePlus, Users } from 'lucide-react'
+import { Ban, CalendarDays, Flag, MapPin, MessageCircle, MoreHorizontal, Send, SmilePlus, Trash2, Users } from 'lucide-react'
 import { POST_TYPES, REACTIONS } from '../data/catalog'
 import type { Post, PublicProfile, ReactionType } from '../types'
 import { Avatar } from './Avatar'
 import { cn, timeAgo } from '../lib/utils'
+import { postImageUrl } from '../lib/image'
 
 interface Props {
   post: Post
@@ -16,6 +17,7 @@ interface Props {
   onComment: (postId: string, text: string) => Promise<boolean>
   onReport: (postId: string) => void
   onBlock: (authorId: string) => void
+  onDelete: (postId: string) => Promise<void>
 }
 
 const nameOf = (profiles: Map<string, PublicProfile>, id: string) => {
@@ -23,7 +25,7 @@ const nameOf = (profiles: Map<string, PublicProfile>, id: string) => {
   return { id, name: p?.full_name || p?.nickname || 'Estudiante EAN', nickname: p?.nickname || 'estudiante', career: p?.career, semester: p?.semester }
 }
 
-export function PostCard({ post, currentUserId, profiles, blockedIds, reported, onReact, onComment, onReport, onBlock }: Props) {
+export function PostCard({ post, currentUserId, profiles, blockedIds, reported, onReact, onComment, onReport, onBlock, onDelete }: Props) {
   const author = nameOf(profiles, post.author_id)
   const mine = post.my_reaction ?? undefined
   const [showComments, setShowComments] = useState(false)
@@ -31,6 +33,8 @@ export function PostCard({ post, currentUserId, profiles, blockedIds, reported, 
   const [menu, setMenu] = useState(false)
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [imageOpen, setImageOpen] = useState(false)
   const total = Object.values(post.reactions).reduce((a, b) => a + b, 0)
   const top = (Object.entries(post.reactions) as [ReactionType, number][]).filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1]).slice(0, 3)
   const isMine = post.author_id === currentUserId
@@ -61,7 +65,7 @@ export function PostCard({ post, currentUserId, profiles, blockedIds, reported, 
           <p className="truncate font-semibold text-slate-900">{author.name}</p>
           <p className="truncate text-xs text-slate-500">{[author.career, author.semester && `${author.semester}.º sem`, timeAgo(post.created_at)].filter(Boolean).join(' · ')}</p>
         </div>
-        {!isMine && (
+        {(
           <div className="relative">
             <button onClick={() => setMenu((m) => !m)} aria-label="Más opciones" className="rounded-full p-2 text-slate-400 hover:bg-slate-100">
               <MoreHorizontal size={18} />
@@ -74,12 +78,30 @@ export function PostCard({ post, currentUserId, profiles, blockedIds, reported, 
                   exit={{ opacity: 0, scale: 0.95, y: -4 }}
                   className="absolute right-0 top-10 z-20 w-48 overflow-hidden rounded-2xl bg-white py-1 shadow-lg ring-1 ring-slate-100"
                 >
-                  <button onClick={() => { setMenu(false); onReport(post.id) }} className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
-                    <Flag size={16} /> Denunciar publicación
-                  </button>
-                  <button onClick={() => { setMenu(false); onBlock(post.author_id) }} className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-rose-600 hover:bg-rose-50">
-                    <Ban size={16} /> Bloquear a {author.nickname}
-                  </button>
+                  {isMine ? (
+                    <button
+                      disabled={deleting}
+                      onClick={async () => {
+                        setMenu(false)
+                        if (!window.confirm('¿Eliminar esta publicación? También se borran sus comentarios y reacciones.')) return
+                        setDeleting(true)
+                        await onDelete(post.id)
+                        setDeleting(false)
+                      }}
+                      className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-rose-600 hover:bg-rose-50"
+                    >
+                      <Trash2 size={16} /> Eliminar publicación
+                    </button>
+                  ) : (
+                    <>
+                      <button onClick={() => { setMenu(false); onReport(post.id) }} className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
+                        <Flag size={16} /> Denunciar publicación
+                      </button>
+                      <button onClick={() => { setMenu(false); onBlock(post.author_id) }} className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-rose-600 hover:bg-rose-50">
+                        <Ban size={16} /> Bloquear a {author.nickname}
+                      </button>
+                    </>
+                  )}
                 </motion.div>
               )}
             </AnimatePresence>
@@ -91,6 +113,29 @@ export function PostCard({ post, currentUserId, profiles, blockedIds, reported, 
         {POST_TYPES[post.type].label}
       </span>
       <p className="mt-2 text-[15px] leading-relaxed text-slate-700">{post.text}</p>
+
+      {post.image_path && (
+        <>
+          <button type="button" onClick={() => setImageOpen(true)} className="mt-3 block w-full overflow-hidden rounded-2xl bg-slate-100" aria-label="Ver foto completa">
+            <img src={postImageUrl(post.image_path)} alt="Foto de la publicación" loading="lazy" className="max-h-96 w-full object-cover" />
+          </button>
+          <AnimatePresence>
+            {imageOpen && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setImageOpen(false)}
+                className="fixed inset-0 z-50 grid place-items-center bg-slate-950/90 p-4"
+                role="dialog"
+                aria-label="Foto completa"
+              >
+                <img src={postImageUrl(post.image_path)} alt="Foto de la publicación" className="max-h-full max-w-full rounded-xl object-contain" />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </>
+      )}
 
       {(post.plan_when || post.plan_where || post.plan_spots) && (
         <div className="mt-3 space-y-1.5 rounded-2xl bg-slate-50 p-3 text-sm text-slate-600">
