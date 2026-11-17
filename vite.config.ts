@@ -11,7 +11,7 @@ function devApi(): Plugin {
     configureServer(server: ViteDevServer) {
       server.middlewares.use('/api', async (req, res, next) => {
         const name = (req.url ?? '').split('?')[0].replace(/^\//, '')
-        if (!['chat', 'publish'].includes(name)) return next()
+        if (!['chat', 'publish', 'health'].includes(name)) return next()
         try {
           const mod = (await server.ssrLoadModule(`/api/${name}.ts`)) as { POST?: (r: Request) => Promise<Response> }
           if (req.method !== 'POST' || !mod.POST) {
