@@ -2,7 +2,7 @@
 // No devuelve ningún valor secreto. countTokens es gratis en la API de Gemini.
 import { ApiError as GeminiApiError, GoogleGenAI } from '@google/genai'
 
-export const config = { maxDuration: 20 }
+export const config = { maxDuration: 30 }
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body, null, 2), { status, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' } })
@@ -26,7 +26,11 @@ async function checkGemini(model: string) {
   try {
     const ai = new GoogleGenAI({ apiKey: key.trim() })
     await ai.models.countTokens({ model, contents: 'hola' })
-    return { ok: true, code: 'OK' }
+    // Generación mínima (pocas decenas de tokens): algunas keys pasan countTokens pero no pueden generar.
+    const stream = await ai.models.generateContentStream({ model, contents: 'Responde solo: ok', config: { maxOutputTokens: 20 } })
+    let text = ''
+    for await (const chunk of stream) text += chunk.text ?? ''
+    return { ok: true, code: 'OK', respuesta: text.trim().slice(0, 20) }
   } catch (err) {
     if (err instanceof GeminiApiError) {
       let reason = ''
