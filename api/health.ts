@@ -47,8 +47,9 @@ async function checkGemini(model: string) {
 
 export async function GET(): Promise<Response> {
   const primary = process.env.GEMINI_MODEL || 'gemini-3.8-flash'
-  const fallback = (process.env.GEMINI_FALLBACK_MODELS ?? 'gemini-3.6-flash').split(',')[0]?.trim() || 'gemini-3.6-flash'
-  const [geminiPrimary, geminiFallback] = await Promise.all([checkGemini(primary), checkGemini(fallback)])
+  const fallbacks = (process.env.GEMINI_FALLBACK_MODELS ?? 'gemini-3.6-flash,gemini-3.5-flash-lite,gemini-flash-lite-latest').split(',').map((m) => m.trim()).filter(Boolean)
+  const models = [...new Set([primary, ...fallbacks])]
+  const results = await Promise.all(models.map((m) => checkGemini(m)))
   return json({
     entorno: process.env.VERCEL_ENV ?? 'local',
     deploy: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? null,
@@ -58,6 +59,6 @@ export async function GET(): Promise<Response> {
       AI_PROVIDER: process.env.AI_PROVIDER || '(vacío → gemini)',
       GEMINI_MODEL: primary,
     },
-    gemini: { [primary]: geminiPrimary, [fallback]: geminiFallback },
+    gemini: Object.fromEntries(models.map((m, i) => [m, results[i]])),
   })
 }

@@ -69,11 +69,11 @@ const REFUSAL_TEXT = 'No puedo ayudarte con eso, pero si es un tema de la U te r
 /* ─────────────── Gemini ─────────────── */
 
 const RETRYABLE_STATUS = new Set([429, 500, 502, 503, 504])
-const GEMINI_FIRST_CHUNK_TIMEOUT_MS = 12_000
+const GEMINI_FIRST_CHUNK_TIMEOUT_MS = 10_000
 
 function geminiModels() {
   const primary = process.env.GEMINI_MODEL || 'gemini-3.8-flash'
-  const fallbacks = (process.env.GEMINI_FALLBACK_MODELS ?? 'gemini-3.6-flash').split(',').map((m) => m.trim()).filter(Boolean)
+  const fallbacks = (process.env.GEMINI_FALLBACK_MODELS ?? 'gemini-3.6-flash,gemini-3.5-flash-lite,gemini-flash-lite-latest').split(',').map((m) => m.trim()).filter(Boolean)
   return [...new Set([primary, ...fallbacks])]
 }
 
