@@ -133,7 +133,7 @@ async function moderate(text: string, image: { data: string; mimeType: string } 
     console.error('Moderación sin GEMINI_API_KEY: se marca para revisión.')
     return { decision: 'review', categories: ['sin_moderacion'], reason: '' }
   }
-  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
+  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY.trim().replace(/^["']|["']$/g, '') })
   const parts: { text?: string; inlineData?: { data: string; mimeType: string } }[] = [
     { text: `Texto a evaluar:\n"""\n${text}\n"""` },
   ]

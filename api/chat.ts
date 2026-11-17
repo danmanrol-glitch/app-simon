@@ -79,7 +79,7 @@ function geminiModels() {
 
 async function* streamGemini(messages: IncomingMessage[]): AsyncGenerator<string> {
   if (!process.env.GEMINI_API_KEY) throw new ChatError('Falta GEMINI_API_KEY en el servidor.', 500)
-  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
+  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY.trim().replace(/^["']|["']$/g, '') })
   const contents = messages.map((m) => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] }))
 
   // Prueba el modelo principal y, si está saturado o no responde a tiempo, pasa al siguiente.
