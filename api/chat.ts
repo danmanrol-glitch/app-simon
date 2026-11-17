@@ -103,14 +103,18 @@ async function* streamGemini(messages: IncomingMessage[]): AsyncGenerator<string
     } catch (err) {
       clearTimeout(timer)
       const status = err instanceof GeminiApiError ? err.status : undefined
-      if (controller.signal.aborted || (status !== undefined && RETRYABLE_STATUS.has(status))) {
+      // 404 = ese modelo no existe para esta key: se prueba el siguiente.
+      if (controller.signal.aborted || status === 404 || (status !== undefined && RETRYABLE_STATUS.has(status))) {
         console.warn(`Gemini ${model} no disponible (${status ?? 'timeout'}); probando el siguiente modelo.`)
         continue
       }
       if (err instanceof GeminiApiError) {
         console.error(`Error de Gemini (${err.status}):`, err.message)
-        if (err.status === 400 || err.status === 401 || err.status === 403 || err.status === 404) {
-          throw new ChatError('El asistente no está disponible por un problema de configuración.', 500)
+        if (err.status === 400 || err.status === 401 || err.status === 403) {
+          // Código corto para diagnosticar sin exponer detalles (ver SUPABASE_SETUP.txt, sección 10).
+          const keyProblem = /api key|api_key|credential|access_token/i.test(err.message)
+          const code = keyProblem ? 'G-KEY' : `G${err.status}`
+          throw new ChatError(`El asistente no está disponible por un problema de configuración (código ${code}).`, 500)
         }
         throw new ChatError('El asistente no pudo responder. Intenta de nuevo.', 502)
       }
