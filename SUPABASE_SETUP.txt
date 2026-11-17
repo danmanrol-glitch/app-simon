@@ -247,3 +247,16 @@ Revisar lo marcado: en el SQL Editor ejecuta
   Para aprobarlo:  update posts set moderation_status = 'approved' where id = '...';
   Para borrarlo:   delete from posts where id = '...';
   (igual con la tabla comments).
+
+
+10. CÓDIGOS DE ERROR DEL ASISTENTE
+----------------------------------
+Si el chat dice "problema de configuración (código ...)":
+  G-KEY  La key de Gemini no es válida, está revocada o es de otro tipo.
+         Crea una nueva en https://aistudio.google.com/apikey, pégala en
+         Vercel > Settings > Environment Variables > GEMINI_API_KEY
+         (Production) y haz Redeploy.
+  G403   La key no tiene permiso: activa la "Generative Language API" en el
+         proyecto de Google Cloud de la key, o revisa sus restricciones.
+  G400   Petición rechazada por Gemini; revisa los logs.
+Detalle completo: Vercel > proyecto > Logs > filtra por /api/chat.
