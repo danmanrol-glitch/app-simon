@@ -46,8 +46,8 @@ async function checkGemini(model: string) {
 }
 
 export async function GET(): Promise<Response> {
-  const primary = process.env.GEMINI_MODEL || 'gemini-3.8-flash'
-  const fallbacks = (process.env.GEMINI_FALLBACK_MODELS ?? 'gemini-3.6-flash,gemini-3.5-flash-lite,gemini-flash-lite-latest').split(',').map((m) => m.trim()).filter(Boolean)
+  const primary = process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite'
+  const fallbacks = (process.env.GEMINI_FALLBACK_MODELS ?? 'gemini-3.8-flash,gemini-3.6-flash').split(',').map((m) => m.trim()).filter(Boolean)
   const models = [...new Set([primary, ...fallbacks])]
   const results = await Promise.all(models.map((m) => checkGemini(m)))
   return json({

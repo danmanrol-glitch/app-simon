@@ -110,8 +110,8 @@ const MODERATION_SCHEMA = {
 const RETRYABLE_STATUS = new Set([429, 500, 502, 503, 504])
 
 function moderationModels() {
-  const primary = process.env.GEMINI_MODERATION_MODEL || 'gemini-3.6-flash'
-  const fallbacks = (process.env.GEMINI_FALLBACK_MODELS ?? 'gemini-3.8-flash,gemini-3.5-flash-lite,gemini-flash-lite-latest').split(',').map((m) => m.trim()).filter(Boolean)
+  const primary = process.env.GEMINI_MODERATION_MODEL || 'gemini-3.5-flash-lite'
+  const fallbacks = (process.env.GEMINI_FALLBACK_MODELS ?? 'gemini-3.8-flash,gemini-3.6-flash').split(',').map((m) => m.trim()).filter(Boolean)
   return [...new Set([primary, ...fallbacks])]
 }
 
